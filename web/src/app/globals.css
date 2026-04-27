@@ -87,6 +87,56 @@ input.input {
   font: inherit;
 }
 
+.passwordField {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.passwordField input.input {
+  padding-right: 2.75rem;
+}
+
+.passwordFieldToggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.passwordFieldToggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+}
+
+.passwordFieldToggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.passwordFieldToggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.passwordFieldToggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
 textarea.input {
   min-height: 120px;
   resize: vertical;
