@@ -1,0 +1,412 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+import type {
+  ChatMessage,
+  ChatStreamRequest,
+  ClinicalFlowId,
+  ExplainBlock,
+  PatientContextPayload,
+  UrgenciaLevel,
+} from "@/types/assistant";
+
+function newId(): string {
+  return crypto.randomUUID();
+}
+
+async function consumeSse(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  onEvent: (event: string, data: string) => void,
+): Promise<void> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    for (;;) {
+      const idx = buffer.indexOf("\n\n");
+      if (idx === -1) break;
+      const block = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+
+      let eventName = "message";
+      let data = "";
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) eventName = line.slice(6).trim();
+        if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+      if (data) onEvent(eventName, data);
+    }
+  }
+}
+
+const FLOW_LABELS: Record<ClinicalFlowId, string> = {
+  triagemGinecologica: "Triagem ginecológica",
+  violenciaDomestica: "Violência doméstica (sensível)",
+  obstetrico: "Obstétrico",
+  prevencao: "Prevenção / rastreamento",
+};
+
+export function AssistantExperience() {
+  const [flowId, setFlowId] = useState<ClinicalFlowId>("triagemGinecologica");
+  const [professionalVerified, setProfessionalVerified] = useState(false);
+  const [patientContextText, setPatientContextText] = useState(
+    '{\n  "resumo": "Paciente fictícia, 34 anos, sem PII real."\n}',
+  );
+  const [input, setInput] = useState(
+    "Relato fictício: dor pélvica leve há 2 dias, sem febre.",
+  );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [explain, setExplain] = useState<ExplainBlock | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const urgenciaRef = useRef<UrgenciaLevel | null>(null);
+
+  const needsProfessionalGate = flowId === "violenciaDomestica";
+  const canSend = useMemo(() => {
+    if (busy) return false;
+    if (!input.trim()) return false;
+    if (needsProfessionalGate && !professionalVerified) return false;
+    return true;
+  }, [busy, input, needsProfessionalGate, professionalVerified]);
+
+  const appendLog = useCallback((line: string) => {
+    setLogs((prev) => [`${new Date().toISOString()} ${line}`, ...prev].slice(0, 200));
+  }, []);
+
+  const send = useCallback(async () => {
+    setError(null);
+    if (!canSend) {
+      setError(
+        needsProfessionalGate
+          ? "Confirme o perfil profissional para usar este fluxo (demo)."
+          : "Digite uma mensagem.",
+      );
+      return;
+    }
+
+    let patientContext: PatientContextPayload | undefined;
+    const trimmed = patientContextText.trim();
+    if (trimmed) {
+      try {
+        patientContext = JSON.parse(trimmed) as PatientContextPayload;
+      } catch {
+        setError("JSON inválido em contexto da paciente.");
+        return;
+      }
+    }
+
+    const userMsg: ChatMessage = {
+      id: newId(),
+      role: "user",
+      content: input.trim(),
+    };
+
+    const nextThread: ChatMessage[] = [...messages, userMsg];
+    setMessages(nextThread);
+    setInput("");
+    setBusy(true);
+    setExplain(null);
+    urgenciaRef.current = null;
+
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const rid = crypto.randomUUID();
+    setRequestId(rid);
+
+    const body: ChatStreamRequest = {
+      flowId,
+      messages: nextThread.map((m) => ({ role: m.role, content: m.content })),
+      patientContext,
+    };
+
+    let assistantText = "";
+    const assistantId = newId();
+    const timeoutMs = 120_000;
+    const timeoutId = window.setTimeout(() => {
+      abortRef.current?.abort();
+    }, timeoutMs);
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-request-id": rid,
+        },
+        body: JSON.stringify(body),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || `HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      await consumeSse(reader, (event, dataJson) => {
+        if (event === "meta") {
+          const meta = JSON.parse(dataJson) as {
+            requestId?: string;
+            urgencia?: UrgenciaLevel;
+          };
+          if (meta.requestId) setRequestId(meta.requestId);
+          if (meta.urgencia) urgenciaRef.current = meta.urgencia;
+          appendLog(`meta: ${dataJson}`);
+          return;
+        }
+        if (event === "token") {
+          const { delta } = JSON.parse(dataJson) as { delta: string };
+          assistantText += delta;
+          const urg = urgenciaRef.current ?? undefined;
+          setMessages((prev) => {
+            const withoutTail = prev.filter((m) => m.id !== assistantId);
+            return [
+              ...withoutTail,
+              {
+                id: assistantId,
+                role: "assistant",
+                content: assistantText,
+                urgencia: urg,
+              },
+            ];
+          });
+          return;
+        }
+        if (event === "explain") {
+          const ex = JSON.parse(dataJson) as ExplainBlock;
+          setExplain(ex);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId ? { ...m, explain: ex } : m,
+            ),
+          );
+          appendLog(`explain: ${dataJson}`);
+          return;
+        }
+        if (event === "log") {
+          appendLog(`log: ${dataJson}`);
+          return;
+        }
+        if (event === "error") {
+          const err = JSON.parse(dataJson) as { message?: string };
+          throw new Error(err.message || "Erro no stream");
+        }
+        if (event === "done") {
+          appendLog("done");
+        }
+      });
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content: assistantText,
+                urgencia: urgenciaRef.current ?? m.urgencia,
+              }
+            : m,
+        ),
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Falha desconhecida";
+      setError(msg);
+      appendLog(`error: ${msg}`);
+    } finally {
+      window.clearTimeout(timeoutId);
+      setBusy(false);
+    }
+  }, [
+    appendLog,
+    canSend,
+    flowId,
+    input,
+    messages,
+    needsProfessionalGate,
+    patientContextText,
+  ]);
+
+  return (
+    <div className="appShell">
+      <header>
+        <h1 style={{ marginTop: 0 }}>Assistente (demo) — saúde da mulher</h1>
+        <p className="muted">
+          BFF Next.js → orquestração Python (LangChain/LangGraph). Modo atual:{" "}
+          <span className="pill">ver /api/health</span>
+        </p>
+      </header>
+
+      <div className="banner" role="note">
+        <strong>Aviso clínico e legal (FE-UI-02):</strong> ferramenta de{" "}
+        <strong>apoio à decisão</strong>. Não prescreve, não diagnostica de
+        forma definitiva e não substitui avaliação presencial. Em risco ou
+        violência: acione protocolo institucional e profissionais habilitados.
+      </div>
+
+      <div className="appGrid">
+        <section className="card" aria-labelledby="chatHeading">
+          <h2 id="chatHeading">Conversa</h2>
+
+          <div className="chatLog" aria-live="polite">
+            {messages.length === 0 ? (
+              <p className="muted">Nenhuma mensagem ainda.</p>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`bubble ${m.role === "user" ? "user" : "assistant"}`}
+                >
+                  <div className="row" style={{ justifyContent: "space-between" }}>
+                    <strong>{m.role === "user" ? "Você" : "Assistente"}</strong>
+                    {m.urgencia && m.urgencia !== "nenhuma" ? (
+                      <span className="pillUrgent">Urgência: {m.urgencia}</span>
+                    ) : null}
+                  </div>
+                  <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <label className="muted" htmlFor="msg">
+            Mensagem
+          </label>
+          <textarea
+            id="msg"
+            className="input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={busy}
+          />
+
+          {error ? (
+            <p role="alert" style={{ color: "#b91c1c" }}>
+              {error}
+            </p>
+          ) : null}
+
+          <div className="row" style={{ marginTop: "0.75rem" }}>
+            <button className="btn" type="button" onClick={send} disabled={!canSend}>
+              {busy ? "Gerando…" : "Enviar"}
+            </button>
+            <button
+              className="btnSecondary"
+              type="button"
+              onClick={() => abortRef.current?.abort()}
+              disabled={!busy}
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+
+        <aside className="card" aria-label="Painel clínico e integrações">
+          <h2 style={{ marginTop: 0 }}>Fluxo e contexto</h2>
+
+          <label className="muted" htmlFor="flow">
+            Fluxo LangGraph (FE-INT-02)
+          </label>
+          <select
+            id="flow"
+            className="input"
+            value={flowId}
+            disabled={busy}
+            onChange={(e) => {
+              const v = e.target.value as ClinicalFlowId;
+              setFlowId(v);
+              setProfessionalVerified(false);
+            }}
+          >
+            {(Object.keys(FLOW_LABELS) as ClinicalFlowId[]).map((id) => (
+              <option key={id} value={id}>
+                {FLOW_LABELS[id]}
+              </option>
+            ))}
+          </select>
+
+          {needsProfessionalGate ? (
+            <div className="banner" style={{ marginTop: "0.75rem" }}>
+              <strong>Gate de identidade (FE-SEC-01 / RF-SEC-02):</strong> confirme
+              que representa um <strong>profissional autorizado</strong> neste
+              ambiente de demonstração.
+              <div className="row" style={{ marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  className={professionalVerified ? "btn" : "btnSecondary"}
+                  onClick={() => setProfessionalVerified(true)}
+                  disabled={busy || professionalVerified}
+                >
+                  {professionalVerified ? "Confirmado" : "Confirmo perfil profissional (demo)"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <h3>Contexto da paciente (opcional)</h3>
+          <p className="muted">JSON livre — sem PII real (FE-INT-03 / RF-LC-03).</p>
+          <textarea
+            className="input"
+            value={patientContextText}
+            onChange={(e) => setPatientContextText(e.target.value)}
+            disabled={busy}
+            spellCheck={false}
+          />
+
+          <h3>Explainability (FE-UI-01 / RF-SEC-04)</h3>
+          {!explain ? (
+            <p className="muted">Aguardando resposta…</p>
+          ) : (
+            <div className="bubble assistant">
+              <div>
+                <strong>Fonte:</strong> {explain.fonte ?? "—"}
+              </div>
+              <div>
+                <strong>Confiança:</strong>{" "}
+                {explain.confianca === undefined
+                  ? "—"
+                  : `${Math.round(explain.confianca * 100)}%`}
+              </div>
+              {explain.raciocinioClinico ? (
+                <div style={{ marginTop: "0.5rem" }}>
+                  <strong>Raciocínio (alto nível):</strong>{" "}
+                  <span style={{ whiteSpace: "pre-wrap" }}>
+                    {explain.raciocinioClinico}
+                  </span>
+                </div>
+              ) : null}
+              <div style={{ marginTop: "0.5rem" }}>
+                <strong>Lacunas:</strong>
+                <ul>
+                  {(explain.lacunas ?? []).map((l) => (
+                    <li key={l}>{l}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <h3>Trilha / logs (FE-INT-04)</h3>
+          <p className="muted">
+            <strong>x-request-id:</strong> {requestId ?? "—"}
+          </p>
+          <div style={{ maxHeight: 220, overflow: "auto" }}>
+            {logs.length === 0 ? (
+              <p className="muted">Sem eventos.</p>
+            ) : (
+              logs.map((l) => (
+                <div key={l} className="logLine">
+                  {l}
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}

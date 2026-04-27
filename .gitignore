@@ -3,3 +3,10 @@
 .claude/
 .cursor/
 .windsurf/
+.specs/
+
+# Next.js (web/)
+web/node_modules/
+web/.next/
+web/out/
+web/.env.local

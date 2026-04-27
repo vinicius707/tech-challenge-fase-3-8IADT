@@ -1,6 +1,12 @@
 # Entregáveis e definição de pronto (DoD)
 
-**Fonte:** Tech Challenge Fase 3 — “Entregáveis da Fase 3” e critérios de avaliação.
+**Documento oficial:** PDF Secretaria — *Entregáveis da Fase 3* (p. 7–8), vídeo (p. 8), critérios de avaliação (p. 10).
+
+## Critérios testáveis (WHEN / ENTÃO) — entrega
+
+1. WHEN o repositório for inspecionado ENTÃO ele **DEVE** conter código de fine-tuning, LangChain, LangGraph, dados anonimizados/sintéticos e módulos de segurança (PDF p. 7).  
+2. WHEN o relatório for lido ENTÃO ele **DEVE** cobrir curadoria, anonimização, métricas, capacidades, limitações, integração hospitalar, diagramas dos quatro fluxos e avaliação do modelo incluindo bias e feedback de especialistas (PDF p. 7).  
+3. WHEN o vídeo for reproduzido ENTÃO a duração **DEVE** ser **≤ 15 minutos** e **DEVE** mostrar: treino/funcionamento da LLM personalizada; **um** fluxo automatizado; perguntas contextualizadas; logs e validação (PDF p. 8).
 
 ## 1. Repositório Git (código-fonte)
 

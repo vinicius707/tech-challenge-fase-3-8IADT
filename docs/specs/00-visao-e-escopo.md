@@ -1,68 +1,95 @@
 # Visão e escopo — Assistente virtual em saúde da mulher
 
-**Fonte:** `8IADT - Fase 3 - Tech challenge Secretaria.pdf` (Tech Challenge, Fase 3)  
-**Propósito deste documento:** delimitar problema, objetivos e escopo para refinamento em SDD (arquitetura, APIs, dados operacionais).
+**Documento oficial:** [8IADT - Fase 3 - Tech challenge Secretaria.pdf](../../8IADT%20-%20Fase%203%20-%20Tech%20challenge%20Secretaria.pdf) (11 páginas)  
+**Propósito:** contrato de alto nível entre o enunciado da Fase 3 e o SDD (arquitetura, APIs, dados operacionais).
 
-## 1. Problema
+## 1. Contexto acadêmico (PDF p. 2)
 
-Uma rede hospitalar especializada deseja evoluir de automação de análises de exames para um **assistente virtual médico** focado em **saúde e segurança da mulher**, capaz de:
+- O **Tech Challenge** integra as disciplinas da fase; desenvolvimento **em grupo** (princípio do enunciado).
+- Atividade **obrigatória**; atenção ao **prazo de entrega** definido pela instituição.
+- Peso: **90%** da nota de **todas** as disciplinas da fase (reforça criticidade da entrega completa).
 
-- apoiar condutas clínicas alinhadas a protocolos institucionais;
-- responder dúvidas de profissionais especializados;
-- sugerir procedimentos com base em protocolos internos;
-- orquestrar **fluxos de decisão automatizados e seguros** (exames pendentes, tratamentos reprodutivos, alertas de violência doméstica, coordenação multidisciplinar), com sensibilidade ao contexto de atendimento feminino.
+## 2. Problem statement (PDF p. 2–3)
 
-## 2. Objetivo do produto (nível spec)
+Após automação de análises de exames e modelos para saúde da mulher, a rede hospitalar quer um **assistente virtual médico** que:
 
-Desenvolver um assistente de **apoio à decisão** (não substituto do profissional) que combine:
+- seja treinado com **dados próprios** da instituição (direção de produto: especialização + governança de dados);
+- **auxilie condutas** clínicas em saúde feminina, **responda dúvidas** de profissionais especializados e **sugira procedimentos** segundo **protocolos internos**;
+- organize **fluxos de decisão automatizados e seguros**: exames ginecológicos pendentes, questões reprodutivas, **alertas** para suspeita de **violência doméstica**, **coordenação multidisciplinar** (ginecologista, psicóloga, assistente social), com **LangChain** e sensibilidade ao atendimento feminino.
 
-1. **LLM ajustada ao domínio** (fine-tuning com dados curados e anonimizados da área).
-2. **Orquestração LangChain** (pipeline, contexto, integrações conceituais com bases e protocolos).
-3. **Fluxos LangGraph** para cenários clínicos definidos no desafio.
-4. **Camadas de segurança, privacidade, auditoria e explicabilidade** compatíveis com dados sensíveis e LGPD.
+## 3. Objetivo do produto (PDF p. 2–3)
 
-## 3. Stakeholders implícitos
+Desenvolver assistente virtual de atendimento médico em **saúde e segurança da mulher** que combine:
 
-- **Paciente / usuária final** (quando houver interface direta): privacidade, linguagem respeitosa, encaminhamentos seguros.
-- **Profissionais de saúde** (ginecologia, obstetrícia, psicologia, assistência social, equipe de segurança): validação clínica, auditoria, limites do sistema.
-- **Instituição / TI / compliance**: logs, controle de acesso, conformidade regulatória.
-- **Avaliadores acadêmicos** (Fase 3): repositório, relatório, diagramas, vídeo demonstrativo.
+1. **Fine-tuning** de LLM com dados específicos da área (exemplos no PDF: LLaMA, Falcon ou outro).
+2. **Fluxos automatizados** de decisão clínica via **LangChain** (e **LangGraph** nos fluxos descritos; ver [01-requisitos-funcionais.md](01-requisitos-funcionais.md)).
+3. **Protocolos de segurança, privacidade** e **sensibilidade cultural** do atendimento feminino.
 
-## 4. Glossário mínimo
+## 4. Metas mensuráveis (alinhadas ao PDF)
+
+- [ ] Existe **pipeline reprodutível** de fine-tuning com dados curados e anonimizados da saúde da mulher (p. 3–4, 7).
+- [ ] Existe **assistente** com pipeline **LangChain** integrando LLM customizada a conhecimento e bases conceituais (p. 4–5, 7).
+- [ ] Existem **quatro fluxos** implementados com **LangGraph**, cada um usando **dados relevantes** ao cenário (p. 5–6).
+- [ ] Existem **módulos** de segurança, validação, logging/auditoria e explainability conforme item 4 do PDF (p. 6–7).
+- [ ] Há **dataset anonimizado** ou **dados sintéticos** representativos no repositório (p. 7).
+- [ ] Há **relatório técnico**, **diagramas** dos fluxos e **vídeo** ≤ 15 min com os itens obrigatórios (p. 7–8).
+
+## 5. Stakeholders implícitos
+
+- **Paciente / usuária** (se houver canal direto): privacidade, dignidade, encaminhamento seguro.
+- **Profissionais** (GO, psicologia, assistência social, segurança): validação, auditoria, limites do sistema.
+- **Instituição / TI / compliance**: LGPD, controles de acesso, rastreabilidade.
+- **Avaliadores Fase 3**: código, relatório, diagramas, vídeo e aderência aos **seis critérios de avaliação** (p. 10).
+
+## 6. Glossário mínimo
 
 | Termo | Significado neste projeto |
 |-------|---------------------------|
-| Assistente | Agente de software que combina LLM + ferramentas + fluxos; **ferramenta de apoio**, não prescrição autônoma definitiva. |
-| Protocolo | Diretriz institucional ou de sociedade médica usada como fonte de conduta ou evidência citável. |
-| Fluxo (LangGraph) | Grafo de estados/decisões com entradas, transições e saídas padronizadas para um cenário clínico. |
-| Dado sensível | Inclui violência doméstica, saúde mental, reprodução; exige anonimização e controles reforçados. |
+| Assistente | LLM + orquestração (LangChain/LangGraph) + políticas; **apoio à decisão**, não substituto legal/clínico do profissional. |
+| Protocolo | Diretriz institucional ou de sociedade médica citável na resposta (explainability). |
+| Fluxo (LangGraph) | Grafo de estados para um cenário clínico; deve consumir **dados relevantes** àquele fluxo (PDF p. 5). |
+| Dado sensível | Violência doméstica, saúde mental, reprodução; exige anonimização e controles reforçados. |
 
-## 5. Dentro do escopo (spec)
+## 7. Dentro do escopo (spec)
 
-- Fine-tuning de LLM com corpus médico da mulher (conforme lista do PDF).
-- Pipeline LangChain integrando modelo customizado e **interfaces** para bases estruturadas e protocolos.
-- Quatro fluxos LangGraph: triagem ginecológica, violência doméstica, obstétrico, prevenção.
-- Módulos de segurança, validação de respostas, logging/auditoria e explainability.
-- Dataset anonimizado ou **exemplos sintéticos** representativos + documentação do processo.
+- Itens 1–4 das **Entregas técnicas** obrigatórias (PDF p. 3–7): fine-tuning, LangChain, LangGraph, segurança e validação.
+- **Entregáveis da Fase 3** (PDF p. 7–8): repositório, relatório, diagramas, avaliação do modelo, vídeo.
+- Considerações **éticas** e instrumentos de **LGPD** (PDF p. 9).
 
-## 6. Fora do escopo explícito (nesta spec)
+## 8. Fora do escopo explícito (nesta spec)
 
-- Definir stack de hospedagem, framework web ou banco específico (fica para SDD).
-- Substituir julgamento clínico humano ou prescrever medicação **sem** validação de especialista (proibido pelo próprio desafio).
-- Garantir certificação regulatória de software médico (não exigida no texto; aderência a boas práticas e LGPD como **objetivo de desenho**).
+| Exclusão | Motivo |
+|----------|--------|
+| Stack de hospedagem, framework web, SGBD específico | Não prescritos no PDF; SDD escolhe. |
+| Prescrição ou diagnóstico definitivo autônomo | **Proibido** pelos limites do PDF (p. 6). |
+| Certificação de produto como software médico regulado | Não exigida no texto; aderência a boas práticas e LGPD como meta de desenho. |
 
-## 7. Premissas e restrições
+## 9. Restrições tecnológicas e de conformidade
 
-- Uso de **LangChain** e **LangGraph** como tecnologias de orquestração/fluxo obrigatórias no enunciado.
-- **LGPD** e sensibilidade cultural como restrições de produto e engenharia.
-- Idioma e tom: inclusivos e adaptáveis a contextos socioeconômicos diversos (meta-qualidade).
+- **LangChain** para pipeline e integração (PDF p. 3–5).
+- **LangGraph** para cada fluxo de atendimento descrito (PDF p. 5–6).
+- **LGPD** e normas de proteção de dados médicos como referência de conformidade (PDF p. 9–10).
+- Fine-tuning: modelo tipo **LLaMA**, **Falcon** ou **outro** explicitamente permitido no enunciado (PDF p. 3).
+
+## 10. Critérios de sucesso da avaliação (PDF p. 10)
+
+O trabalho será julgado, entre outros ângulos, por:
+
+1. Precisão médica especializada (diretrizes de sociedades médicas).  
+2. Segurança da paciente (proteção e detecção de riscos).  
+3. Sensibilidade ética (questões sensíveis).  
+4. Aplicabilidade prática em ambiente clínico.  
+5. Impacto social no atendimento à mulher.  
+6. Conformidade regulatória em proteção de dados médicos.
+
+Mensagem de encerramento do PDF (p. 10): priorizar **segurança, privacidade e bem-estar feminino**, com **validação contínua** por profissionais especializados.
 
 ---
 
 ## Open questions para SDD
 
-- Qual **LLM base** e licença (ex.: família LLaMA, Falcon, outro) e ambiente de treino?
-- O assistente atende **só profissionais** ou também pacientes? Isso altera UX, consentimento e logs.
-- Integração com **sistemas hospitalares reais** é mock, API genérica ou protótipo desacoplado?
-- Critérios quantitativos mínimos de **qualidade do modelo** (métricas, limiares, conjunto de teste) além do relatório qualitativo.
-- Política de **retenção** de logs e segregação de logs de violência doméstica.
+- LLM base, licença e ambiente de treino reprodutível.
+- Público-alvo primário: **somente profissionais** vs interface também para paciente.
+- Integração hospitalar: **mock**, **API genérica** ou acoplamento real.
+- Métricas quantitativas mínimas e limiares de aceite para o modelo.
+- Política de retenção e segregação de logs em trilhas de violência doméstica.

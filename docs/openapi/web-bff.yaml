@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Web BFF (Next.js) — Assistente
+  version: 0.1.0
+paths:
+  /api/health:
+    get:
+      summary: Health do BFF
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  mode:
+                    type: string
+                    enum: [stub, proxy]
+  /api/chat/stream:
+    post:
+      summary: Chat com SSE
+      parameters:
+        - in: header
+          name: x-request-id
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatStreamRequest"
+      responses:
+        "200":
+          description: Stream SSE
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400":
+          description: Payload inválido
+components:
+  schemas:
+    ChatStreamRequest:
+      type: object
+      required: [flowId, messages]
+      properties:
+        flowId:
+          type: string
+          enum:
+            - triagemGinecologica
+            - violenciaDomestica
+            - obstetrico
+            - prevencao
+        threadId: { type: string }
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [user, assistant, system]
+              content: { type: string }
+        patientContext:
+          type: object
+          additionalProperties: true

@@ -65,16 +65,20 @@ Conforme PDF e RF-SEC-03:
 - Consideração a aspectos culturais e religiosos (sem substituir autonomia da paciente).
 - Adaptação a diferentes contextos socioeconômicos (tom e exemplos).
 
-## 6. Critérios de avaliação (alinhamento do produto)
+## 6. Critérios de avaliação do desafio (PDF p. 10)
 
-1. Precisão médica especializada.  
-2. Segurança da paciente.  
-3. Sensibilidade ética.  
-4. Aplicabilidade prática em ambiente clínico.  
-5. Impacto social.  
-6. Conformidade regulatória (dados médicos).
+| # | Critério no PDF | Implicação para a spec |
+|---|-----------------|-------------------------|
+| 1 | Precisão médica especializada (diretrizes de sociedades médicas) | RNF-REL-01; RF-LC-06; relatório com métricas e referências. |
+| 2 | Segurança da paciente (proteção e detecção de riscos) | RF-SEC-01/02; fluxos RF-LG-* com guardas de urgência. |
+| 3 | Sensibilidade ética (questões sensíveis) | RNF-ETH-*; linguagem e encaminhamentos em violência. |
+| 4 | Aplicabilidade prática em ambiente clínico | Mocks realistas, UX de apoio ao profissional, tempos de resposta definidos no SDD. |
+| 5 | Impacto social (atendimento à mulher) | US-P3-01; equidade e acesso no relatório. |
+| 6 | Conformidade regulatória (proteção de dados médicos) | RNF-REG-02; RNF-SEG-*; LGPD p. 9. |
 
-Estes itens devem aparecer como **seção explícita** no relatório técnico e, quando possível, evidências no vídeo.
+**Mensagem final do PDF (p. 10):** priorizar segurança, privacidade e bem-estar feminino, com **validação contínua** por profissionais especializados.
+
+Estes itens **DEVEM** aparecer como **seção explícita** no relatório técnico e, quando possível, **evidências** no vídeo.
 
 ---
 

@@ -1,6 +1,7 @@
 # LangChain e integração
 
-**Fonte:** Tech Challenge Fase 3 — item 2 (assistente com LangChain).  
+**Documento oficial:** PDF Secretaria — item **2** (p. 4–5), *Criação de assistente médico especializado com LangChain*.  
+Requisitos correspondentes: **RF-LC-01** … **RF-LC-06** em [01-requisitos-funcionais.md](01-requisitos-funcionais.md).  
 Este documento define **interfaces conceituais** e responsabilidades; implementação fica para o SDD.
 
 ## 1. Objetivo da camada LangChain
@@ -54,7 +55,7 @@ Cada fonte deve expor operações mínimas documentadas no SDD (nomes ilustrativ
 | Preventivos | `getScreeningStatus`, `listOverdueExams` | RF-LC-05 alertas. |
 | Violência | `appendSecureNote`, `getRiskFlags` (com RBAC) | Protocolo de segurança obrigatório. |
 | Medicamentos | `searchDrugInfo`, `checkInteractions` (TBD) | Não substituir prescrição validada. |
-| Protocolos | `fetchGuidelineSnippet`, `listCitations` | Suporte a explainability RF-SEC-04. |
+| Protocolos / sociedades | `fetchGuidelineSnippet`, `listCitations` | RF-LC-06: protocolos atualizados de sociedades médicas especializadas; suporte a RF-SEC-04 (fontes). |
 
 ## 3. Contextualização da paciente
 

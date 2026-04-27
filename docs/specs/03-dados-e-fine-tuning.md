@@ -1,6 +1,7 @@
 # Dados e fine-tuning
 
-**Fonte:** Tech Challenge Fase 3 — itens 1 (fine-tuning) e “Sugestão de Datasets Especializados”.
+**Documento oficial:** PDF Secretaria — item **1** (p. 3–4) e tabela **Sugestão de Datasets Especializados** (p. 8–9).  
+Ver também requisitos RF-FT-* em [01-requisitos-funcionais.md](01-requisitos-funcionais.md).
 
 ## 1. Domínio do corpus
 
@@ -33,7 +34,7 @@ O relatório técnico deve incluir, conforme PDF:
 Lista derivada do PDF; links são **fontes conceituais** — curadoria própria pode substituir onde indicado.
 
 1. **Women's Health QA** — Perguntas e respostas sobre saúde da mulher. Fonte: curadoria própria baseada em guidelines.
-2. **Gynecological Protocols** — Protocolos ginecológicos. Fonte: Sociedade Brasileira de Ginecologia (SBGO / sociedade citada no PDF).
+2. **Gynecological Protocols** — Protocolos de atendimento ginecológico. Fonte: **Sociedade Brasileira de Ginecologia** (texto do PDF p. 8).
 3. **Obstetric Guidelines** — Diretrizes obstétricas e perinatais. Fonte: FEBRASGO, OMS.
 4. **Violence Detection Patterns** — Padrões linguísticos para detecção de violência. Fonte: literatura especializada + dados sintéticos.
 5. **Contraceptive Knowledge Base** — Contraceptivos. Fonte: FDA, ANVISA, literatura médica.

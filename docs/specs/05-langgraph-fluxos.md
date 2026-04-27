@@ -1,7 +1,13 @@
 # LangGraph — fluxos de atendimento especializado
 
-**Fonte:** Tech Challenge Fase 3 — item 3 (fluxos com LangGraph).  
-Cada fluxo é descrito como **máquina de estados** com entradas, saídas, transições e guardas conceituais. IDs de estado em **camelCase** alinham-se aos diagramas Mermaid.
+**Documento oficial:** PDF Secretaria — item **3** (p. 5–6): *“Criação de cada fluxo de atendimento descritos abaixo utilizando LangGraph e os dados relevantes para cada um”*.  
+Requisitos: **RF-LG-00** … **RF-LG-04** em [01-requisitos-funcionais.md](01-requisitos-funcionais.md).
+
+Cada fluxo é uma **máquina de estados** com entradas, saídas, transições e guardas conceituais. IDs de estado em **camelCase** coincidem com os diagramas Mermaid (rastreio SDD → código).
+
+### Dados relevantes por fluxo (RF-LG-00)
+
+O enunciado exige LangGraph **e** dados pertinentes a cada cenário. No SDD, manter matriz **fluxo → fontes de dados** (prontuário, preventivos, sinais de violência, dados obstétricos, histórico de rastreamento), ainda que via **mocks** versionados.
 
 ---
 

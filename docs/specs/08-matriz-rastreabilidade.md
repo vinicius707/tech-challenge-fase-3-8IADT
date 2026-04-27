@@ -1,48 +1,67 @@
 # Matriz de rastreabilidade (spec → PDF → SDD)
 
-**Legenda:** cada linha liga um ID desta suite de specs ao conteúdo do PDF *Tech Challenge Fase 3* e ao artefato esperado no **fluxo futuro de SDD** (a preencher).
+**Documento oficial:** `8IADT - Fase 3 - Tech challenge Secretaria.pdf`  
+**Legenda:** cada linha liga um artefato desta pasta à **página** do PDF e a um entregável típico do **SDD** (a detalhar na implementação).
 
-Formato: `ID spec` — trecho do PDF — artefato SDD (TBD).
+Formato: **ID** — citação do PDF — **artefato SDD (TBD)**.
 
 ---
 
-## Visão e escopo
+## Visão e índice
 
-- `00-visao-e-escopo.md` — Contexto, desafio, objetivo (págs. 2–3) — *SDD:* visão de arquitetura, stakeholders, escopo técnico.
+- [00-visao-e-escopo.md](00-visao-e-escopo.md) — Contexto, desafio, objetivo, grupo/prazo/nota (p. 2) — *SDD:* PROJECT.md / visão arquitetural.
+- [README.md](README.md) (esta pasta) — Navegação e convenções — *SDD:* onboarding do time.
 
-## Requisitos funcionais
+## Front-end Next.js (`web/` + `.specs/features/web-ui/`)
 
-- `RF-FT-01` … `RF-FT-04` — Item 1 Fine-tuning: protocolos, FAQ, documentos, preparação de dados (págs. 3–4) — *SDD:* esquema de dados, pipeline ETL, contrato de treino, versão de modelo.
-- `RF-LC-01` … `RF-LC-05` — Item 2 LangChain: pipeline, consultas contextualizadas, funcionalidades (págs. 4–5) — *SDD:* diagrama C4, interfaces de serviços, catálogo de tools.
-- `RF-LG-01` … `RF-LG-04` — Item 3 LangGraph: quatro fluxos (págs. 5–6) — *SDD:* desenho de grafo implementável, estados persistidos, políticas de transição.
-- `RF-SEC-01` … `RF-SEC-04` — Item 4 Segurança e validação (págs. 6–7) — *SDD:* threat model, políticas IAM, formato de resposta estruturada, testes de segurança.
+| ID FE | Requisito backend (RF/RNF) | Artefato |
+|-------|-----------------------------|----------|
+| FE-INT-01 | RF-LC-01 | `web/src/app/api/chat/stream/route.ts`, `AssistantExperience` |
+| FE-INT-02 | RF-LG-00 … RF-LG-04 | Seletor `flowId` + payload |
+| FE-INT-03 | RF-LC-03, RF-LC-04 | Formulário `patientContext` |
+| FE-UI-01 | RF-SEC-04 | Painel explainability |
+| FE-UI-02 | RF-SEC-01, RNF-ETH-01 | Faixa de avisos |
+| FE-INT-04 | RF-SEC-03 | Painel de logs / `x-request-id` |
+| FE-SEC-01 | RF-SEC-02 | Gate fluxo violência (mock) |
+| FE-INT-05 | RF-LC-06 | Lista de fontes quando presentes |
+| FE-UI-03 | RNF-REL-02 | Estados vazios/erro/timeout |
+| FE-UI-04 | RNF-ETH-03 | Landmarks / labels |
+| FE-UI-05 | — | pt-BR nas cópias |
 
-## Requisitos não funcionais
+Especificação TLC: [.specs/features/web-ui/spec.md](../../.specs/features/web-ui/spec.md) — contrato HTTP: [docs/api.md](../api.md).
 
-- `RNF-SEG-*`, `RNF-REG-*` — Considerações éticas, LGPD, privacidade (págs. 9–10) — *SDD:* controles técnicos, DPIA, matriz de compliance.
-- `RNF-ETH-*` — Bias, equidade, responsabilidade, cultura (pág. 9) — *SDD:* plano de avaliação ética, guidelines de linguagem.
-- `RNF-REL-*`, `RNF-OBS-*`, `RNF-PER-*` — Avaliação, logging, performance implícita — *SDD:* SLOs, observabilidade, painéis.
+## RF / RNF → PDF p. 3–7 (entregas técnicas)
+
+- **RF-FT-01 … RF-FT-04** — Item **1** Fine-tuning (p. 3–4) — *SDD:* pipeline de dados, versão de modelo, licenças de corpus.
+- **RF-LC-01 … RF-LC-06** — Item **2** LangChain (p. 4–5), incluindo protocolos de sociedades (terceiro bullet do pipeline) — *SDD:* diagrama de componentes, contratos de tools, config de RAG/FT.
+- **RF-LG-00** — Frase “LangGraph **e os dados relevantes** para cada um” (p. 5) — *SDD:* matriz dado↔fluxo, fixtures.
+- **RF-LG-01 … RF-LG-04** — Quatro fluxos textuais (p. 5–6) — *SDD:* implementação LangGraph, testes de caminho, diagramas exportados.
+- **RF-SEC-01 … RF-SEC-04** — Item **4** Segurança e validação (p. 6–7) — *SDD:* políticas, middleware de validação, esquema de logs, formato de explainability.
+
+## RNF → PDF p. 6–10
+
+- **RNF-SEG-01 … RNF-SEG-04** — Item 4 + privacidade (p. 6–7, 9) — *SDD:* threat model, criptografia, segregação.
+- **RNF-REG-01 … RNF-REG-02** — LGPD e conformidade (p. 9–10 item 6) — *SDD:* DPIA resumida, matriz legal.
+- **RNF-ETH-01 … RNF-ETH-03** — Considerações éticas (p. 9) — *SDD:* guia de linguagem, plano de avaliação de bias.
+- **RNF-REL-01 … RNF-REL-03** — Avaliação do modelo no relatório + critérios p. 10 itens 1–2 — *SDD:* golden set, métricas, testes de segurança de saída.
+- **RNF-OBS-01 … RNF-OBS-02** — Logging e auditoria (p. 6–7) — *SDD:* observabilidade, retenção, relatórios.
 
 ## Dados e integração
 
-- `03-dados-e-fine-tuning.md` — Datasets sugeridos (págs. 8–9) — *SDD:* data lineage, licenças, armazenamento.
-- `04-langchain-e-integracao.md` — Pipeline LangChain (pág. 4) — *SDD:* sequência de chains, erros e retries.
+- [03-dados-e-fine-tuning.md](03-dados-e-fine-tuning.md) — Datasets sugeridos (p. 8–9) — *SDD:* data lineage, licenças.
+- [04-langchain-e-integracao.md](04-langchain-e-integracao.md) — Pipeline (p. 4) — *SDD:* sequência LCEL ou equivalente.
 
-## Fluxos
+## Entregáveis e vídeo
 
-- `05-langgraph-fluxos.md` — Descrição linear dos quatro fluxos (págs. 5–6) — *SDD:* código LangGraph, testes de caminho, fixtures.
-
-## Entregáveis
-
-- `07-entregaveis-e-aceite.md` — Entregáveis da Fase 3, vídeo, relatório (págs. 7–8, 10) — *SDD:* checklist de release, roteiro do vídeo, template do relatório.
+- [07-entregaveis-e-aceite.md](07-entregaveis-e-aceite.md) — Repositório, relatório, diagramas, vídeo ≤15 min (p. 7–8) — *SDD:* checklist de release, roteiro de vídeo.
 
 ## Segurança e ética (documento dedicado)
 
-- `06-seguranca-e-etica.md` — Itens 4 + considerações éticas + critérios de avaliação (págs. 6–7, 9–10) — *SDD:* runbooks de incidente, revisão clínica.
+- [06-seguranca-e-etica.md](06-seguranca-e-etica.md) — Item 4 + ética + critérios 1–6 (p. 6–7, 9–10) — *SDD:* runbooks, revisão clínica.
 
 ---
 
 ## Open questions para SDD
 
-- Ferramenta de gestão de requisitos (GitHub Issues, Notion, ReqIF) vs manter só Markdown.
-- Política de versionamento dos IDs (`RF-*`) quando requisitos forem decompostos (ex.: `RF-LC-05a`).
+- Ferramenta de gestão de requisitos (Issues, Notion, ReqIF) vs apenas Markdown.
+- Política de versionamento ao decompor requisitos (ex.: `RF-LC-05a`).
