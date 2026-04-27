@@ -78,7 +78,8 @@ a {
 }
 
 textarea.input,
-select.input {
+select.input,
+input.input {
   width: 100%;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -161,4 +162,114 @@ button.btnSecondary {
   white-space: pre-wrap;
   border-bottom: 1px solid var(--border);
   padding: 0.35rem 0;
+}
+
+.auditGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auditMain {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1100px) {
+  .auditMain {
+    grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
+    align-items: start;
+  }
+}
+
+.kpiRow {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.kpi {
+  border-radius: 14px;
+  padding: 1rem;
+  color: #fff;
+}
+
+.kpiValue {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kpiLabel {
+  opacity: 0.95;
+  margin-top: 0.25rem;
+}
+
+.kpiBlue {
+  background: #2563eb;
+}
+
+.kpiRed {
+  background: #dc2626;
+}
+
+.kpiYellow {
+  background: #d97706;
+}
+
+.tableWrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.65rem 0.75rem;
+  vertical-align: top;
+  text-align: left;
+}
+
+.table th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.rowSelected td {
+  background: #ecfeff;
+}
+
+.linkButton {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+
+.detailPanel {
+  position: sticky;
+  top: 1rem;
+}
+
+.codeBlock {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0b1220;
+  color: #e2e8f0;
+  overflow: auto;
+  max-height: 240px;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }

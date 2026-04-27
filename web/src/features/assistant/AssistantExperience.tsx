@@ -48,7 +48,17 @@ const FLOW_LABELS: Record<ClinicalFlowId, string> = {
   prevencao: "Prevenção / rastreamento",
 };
 
-export function AssistantExperience() {
+export type AssistantExperienceProps = {
+  /** Grava auditoria em SQLite após stream concluído. */
+  persist?: boolean;
+  /** Esconde cabeçalho “marketing” quando embutido no layout autenticado. */
+  embedded?: boolean;
+};
+
+export function AssistantExperience({
+  persist = false,
+  embedded = false,
+}: AssistantExperienceProps) {
   const [flowId, setFlowId] = useState<ClinicalFlowId>("triagemGinecologica");
   const [professionalVerified, setProfessionalVerified] = useState(false);
   const [patientContextText, setPatientContextText] = useState(
@@ -66,6 +76,8 @@ export function AssistantExperience() {
 
   const abortRef = useRef<AbortController | null>(null);
   const urgenciaRef = useRef<UrgenciaLevel | null>(null);
+  const startedAtRef = useRef<number>(0);
+  const latestExplainRef = useRef<ExplainBlock | null>(null);
 
   const needsProfessionalGate = flowId === "violenciaDomestica";
   const canSend = useMemo(() => {
@@ -113,6 +125,8 @@ export function AssistantExperience() {
     setBusy(true);
     setExplain(null);
     urgenciaRef.current = null;
+    latestExplainRef.current = null;
+    startedAtRef.current = Date.now();
 
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -180,6 +194,7 @@ export function AssistantExperience() {
         }
         if (event === "explain") {
           const ex = JSON.parse(dataJson) as ExplainBlock;
+          latestExplainRef.current = ex;
           setExplain(ex);
           setMessages((prev) =>
             prev.map((m) =>
@@ -213,6 +228,43 @@ export function AssistantExperience() {
             : m,
         ),
       );
+
+      const durationMs = Date.now() - startedAtRef.current;
+      const explainSnap = latestExplainRef.current;
+      const promptObj = {
+        flowId,
+        patientContext,
+        messages: [...body.messages, { role: "assistant" as const, content: assistantText }],
+      };
+      const promptText = JSON.stringify(promptObj, null, 2);
+
+      if (persist) {
+        try {
+          const pres = await fetch("/api/atendimentos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requestId: rid,
+              flowId,
+              perguntaText: userMsg.content,
+              duracaoMs: durationMs,
+              urgencia: urgenciaRef.current ?? "nenhuma",
+              promptText,
+              respostaBruta: assistantText,
+              classificacaoJson: explainSnap ? JSON.stringify(explainSnap) : undefined,
+              langgraphTraceJson: null,
+            }),
+          });
+          if (!pres.ok) {
+            const t = await pres.text().catch(() => "");
+            appendLog(`persist_failed: ${t}`);
+          } else {
+            appendLog("persist_ok");
+          }
+        } catch (pe) {
+          appendLog(`persist_error: ${pe instanceof Error ? pe.message : "?"}`);
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha desconhecida";
       setError(msg);
@@ -229,16 +281,23 @@ export function AssistantExperience() {
     messages,
     needsProfessionalGate,
     patientContextText,
+    persist,
   ]);
 
   return (
     <div className="appShell">
       <header>
-        <h1 style={{ marginTop: 0 }}>Assistente (demo) — saúde da mulher</h1>
-        <p className="muted">
-          BFF Next.js → orquestração Python (LangChain/LangGraph). Modo atual:{" "}
-          <span className="pill">ver /api/health</span>
-        </p>
+        {embedded ? (
+          <h1 style={{ marginTop: 0 }}>Novo atendimento</h1>
+        ) : (
+          <>
+            <h1 style={{ marginTop: 0 }}>Assistente (demo) — saúde da mulher</h1>
+            <p className="muted">
+              BFF Next.js → orquestração Python (LangChain/LangGraph). Modo atual:{" "}
+              <span className="pill">ver /api/health</span>
+            </p>
+          </>
+        )}
       </header>
 
       <div className="banner" role="note">

@@ -6,21 +6,51 @@ Interface do assistente clínico descrita em [.specs/features/web-ui/spec.md](..
 
 - Node.js 20+
 
+## Arranque local (clone → a correr)
+
+Na pasta `web/`:
+
+```bash
+npm install
+npm run setup:local
+npm run dev
+```
+
+Abra `http://localhost:3000`. O ficheiro **`.env`** inclui um `AUTH_SECRET` só para demo local (o Next carrega `.env` em `dev` e `build`). Para valores próprios ou integração Python, use **`.env.local`** (sobrepõe `.env`; não é versionado).
+
 ## Variáveis de ambiente
 
-Copie `.env.example` para `.env.local` na pasta `web/`.
+| Origem | Uso |
+|--------|-----|
+| `.env` | Valores padrão do repositório para desenvolvimento local. |
+| `.env.local` | Opcional: segredos e URLs reais (copie de `.env.example` como modelo). |
 
 | Variável | Descrição |
 |----------|-----------|
+| `AUTH_SECRET` | Segredo JWT (≥ 32 caracteres) para o cookie `mw_session`. |
+| `DATABASE_PATH` | Opcional: caminho do ficheiro SQLite (default `data/app.db` dentro de `web/`). |
 | `ORCHESTRATION_API_URL` | Base URL do Python. Se vazio, o BFF usa **stub** SSE (demo local). |
 | `ORCHESTRATION_API_KEY` | Opcional: Bearer para o serviço Python. |
 
 Contrato HTTP: [docs/api.md](../docs/api.md).
 
+## Base de dados (SQLite)
+
+`npm run setup:local` executa migrações e seed. Ou manualmente:
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+Credenciais demo após seed:
+
+- Email: `demo@exemplo.org`
+- Palavra-passe: `demo12345`
+
 ## Comandos
 
 ```bash
-cd web
 npm install
 npm run dev
 ```

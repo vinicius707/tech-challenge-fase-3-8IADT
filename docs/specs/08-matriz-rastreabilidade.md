@@ -27,6 +27,10 @@ Formato: **ID** — citação do PDF — **artefato SDD (TBD)**.
 | FE-UI-03 | RNF-REL-02 | Estados vazios/erro/timeout |
 | FE-UI-04 | RNF-ETH-03 | Landmarks / labels |
 | FE-UI-05 | — | pt-BR nas cópias |
+| FE-AUTH-01 … FE-AUTH-03 | RNF-SEG-01, RF-SEC-03 | `web/src/app/api/auth/*`, `middleware.ts`, `LoginForm` |
+| FE-LIST-01 … FE-LIST-03 | RNF-OBS-01, RF-SEC-03 | `AtendimentosDashboard`, `GET /api/atendimentos` |
+| FE-DET-01 … FE-DET-02 | RF-SEC-04, RNF-OBS-02 | painel detalhe, `GET /api/atendimentos/:id` |
+| FE-Persist-01 | RF-SEC-03, RNF-REG-01 | `AssistantExperience` persist + `POST /api/atendimentos`, redação violência |
 
 Especificação TLC: [.specs/features/web-ui/spec.md](../../.specs/features/web-ui/spec.md) — contrato HTTP: [docs/api.md](../api.md).
 
