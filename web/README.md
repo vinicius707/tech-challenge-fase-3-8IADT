@@ -31,6 +31,7 @@ Abra `http://localhost:3000`. O ficheiro **`.env`** inclui um `AUTH_SECRET` só 
 | `DATABASE_PATH` | Opcional: caminho do ficheiro SQLite (default `data/app.db` dentro de `web/`). |
 | `ORCHESTRATION_API_URL` | Base URL do Python. Se vazio, o BFF usa **stub** SSE (demo local). |
 | `ORCHESTRATION_API_KEY` | Opcional: Bearer para o serviço Python. |
+| `NEXT_PUBLIC_SITE_URL` | Opcional: URL pública (ex.: `https://dominio.org`) para `metadataBase`, sitemap e robots. |
 
 Contrato HTTP: [docs/api.md](../docs/api.md).
 
