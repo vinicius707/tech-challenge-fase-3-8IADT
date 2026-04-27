@@ -39,12 +39,14 @@ export function LoginForm() {
 
   return (
     <div className="appShell" style={{ maxWidth: 480 }}>
-      <h1>Entrar</h1>
-      <p className="muted">
-        Credenciais demo após <code>npm run db:seed</code> (ver README).
-      </p>
-      <form className="card" onSubmit={onSubmit}>
-        <label className="muted" htmlFor="email">
+      <header className="pageHeader">
+        <h1 className="pageTitle">Entrar</h1>
+        <p className="muted">
+          Credenciais demo após <code>npm run db:seed</code> (ver README).
+        </p>
+      </header>
+      <form className="card formStack" onSubmit={onSubmit}>
+        <label className="sectionLabel sectionLabel--field sectionLabel--tightTop muted" htmlFor="email">
           Email
         </label>
         <input
@@ -55,7 +57,7 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           disabled={busy}
         />
-        <label className="muted" htmlFor="password" style={{ display: "block", marginTop: "0.75rem" }}>
+        <label className="sectionLabel sectionLabel--field muted" htmlFor="password">
           Palavra-passe
         </label>
         <div className="passwordField">
@@ -90,12 +92,8 @@ export function LoginForm() {
             )}
           </button>
         </div>
-        {error ? (
-          <p role="alert" style={{ color: "#b91c1c", marginTop: "0.75rem" }}>
-            {error}
-          </p>
-        ) : null}
-        <div className="row" style={{ marginTop: "1rem" }}>
+        {error ? <p role="alert" className="formAlert">{error}</p> : null}
+        <div className="btnRow row">
           <button className="btn" type="submit" disabled={busy}>
             {busy ? "A entrar…" : "Entrar"}
           </button>

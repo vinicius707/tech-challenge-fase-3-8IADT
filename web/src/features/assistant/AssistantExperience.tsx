@@ -13,6 +13,7 @@ import { AssistantExplainPanel } from "./AssistantExplainPanel";
 import { AssistantLogPanel } from "./AssistantLogPanel";
 import { AssistantMessageBubble } from "./AssistantMessageBubble";
 import { ClinicalDisclaimerBanner } from "./ClinicalDisclaimerBanner";
+import { flowChipClass } from "@/lib/flow-ui";
 import { consumeSse } from "./chatStream";
 
 function newId(): string {
@@ -326,15 +327,17 @@ export function AssistantExperience({
 
   return (
     <div className="appShell">
-      <header>
+      <header className="pageHeader">
         {embedded ? (
-          <h1 style={{ marginTop: 0 }}>Novo atendimento</h1>
+          <h1 className="pageTitle">Novo atendimento</h1>
         ) : (
           <>
-            <h1 style={{ marginTop: 0 }}>Assistente (demo) — saúde da mulher</h1>
+            <h1 className="pageTitle">Assistente (demo) — saúde da mulher</h1>
             <p className="muted">
               BFF Next.js → orquestração Python (LangChain/LangGraph). Modo atual:{" "}
-              <span className="pill">ver /api/health</span>
+              <a className="pillLink" href="/api/health" target="_blank" rel="noopener noreferrer">
+                ver /api/health
+              </a>
             </p>
           </>
         )}
@@ -344,7 +347,9 @@ export function AssistantExperience({
 
       <div className="appGrid">
         <section className="card" aria-labelledby="chatHeading">
-          <h2 id="chatHeading">Conversa</h2>
+          <h2 id="chatHeading" className="cardTitle">
+            Conversa
+          </h2>
 
           <div className="chatLog" aria-live="polite">
             {messages.length === 0 ? (
@@ -361,7 +366,7 @@ export function AssistantExperience({
             )}
           </div>
 
-          <label className="muted" htmlFor="msg">
+          <label className="sectionLabel sectionLabel--field muted" htmlFor="msg">
             Mensagem
           </label>
           <textarea
@@ -373,12 +378,12 @@ export function AssistantExperience({
           />
 
           {error ? (
-            <p role="alert" style={{ color: "#b91c1c" }}>
+            <p role="alert" className="formAlert">
               {error}
             </p>
           ) : null}
 
-          <div className="row" style={{ marginTop: "0.75rem" }}>
+          <div className="btnRow row">
             <button className="btn" type="button" onClick={send} disabled={!canSend}>
               {busy ? "Gerando…" : "Enviar"}
             </button>
@@ -394,37 +399,43 @@ export function AssistantExperience({
         </section>
 
         <aside className="card" aria-label="Painel clínico e integrações">
-          <h2 style={{ marginTop: 0 }}>Fluxo e contexto</h2>
+          <h2 className="cardTitle">Fluxo e contexto</h2>
 
-          <label className="muted" htmlFor="flow">
+          <p id="flowLabel" className="sectionLabel sectionLabel--field muted">
             Fluxo LangGraph (FE-INT-02)
-          </label>
-          <select
-            id="flow"
-            className="input"
-            value={flowId}
-            disabled={busy}
-            onChange={(e) => {
-              const v = e.target.value as ClinicalFlowId;
-              setFlowId(v);
-              setProfessionalVerified(false);
-            }}
+          </p>
+          <div
+            className="filtroChips"
+            role="radiogroup"
+            aria-labelledby="flowLabel"
+            style={{ marginBottom: "0.75rem" }}
           >
             {(Object.keys(FLOW_LABELS) as ClinicalFlowId[]).map((id) => (
-              <option key={id} value={id}>
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={flowId === id}
+                className={flowChipClass(id, flowId === id)}
+                disabled={busy}
+                onClick={() => {
+                  setFlowId(id);
+                  setProfessionalVerified(false);
+                }}
+              >
                 {FLOW_LABELS[id]}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
 
           {needsProfessionalGate ? (
-            <div className="banner" style={{ marginTop: "0.75rem" }}>
+            <div className="callout callout--alert">
               <strong>Gate de identidade (FE-SEC-01 / RF-SEC-02):</strong> confirme que representa
               um <strong>profissional autorizado</strong> neste ambiente de demonstração.
-              <div className="row" style={{ marginTop: "0.5rem" }}>
+              <div className="btnRow row" style={{ marginTop: "0.5rem" }}>
                 <button
                   type="button"
-                  className={professionalVerified ? "btn" : "btnSecondary"}
+                  className={professionalVerified ? "btn" : "filtroChip filtroChip--emergencia"}
                   onClick={() => setProfessionalVerified(true)}
                   disabled={busy || professionalVerified}
                 >
@@ -434,7 +445,7 @@ export function AssistantExperience({
             </div>
           ) : null}
 
-          <h3>Contexto da paciente (opcional)</h3>
+          <h3 className="sectionLabel sectionLabel--block">Contexto da paciente (opcional)</h3>
           <p className="muted">JSON livre — sem PII real (FE-INT-03 / RF-LC-03).</p>
           <textarea
             className="input"
@@ -444,7 +455,7 @@ export function AssistantExperience({
             spellCheck={false}
           />
 
-          <h3>Explainability (FE-UI-01 / RF-SEC-04)</h3>
+          <h3 className="sectionLabel sectionLabel--block">Explainability (FE-UI-01 / RF-SEC-04)</h3>
           <AssistantExplainPanel explain={explain} />
 
           <AssistantLogPanel requestId={requestId} logs={logs} />

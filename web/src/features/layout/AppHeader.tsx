@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function AppHeader() {
   const router = useRouter();
+  const pathname = usePathname();
   const [busy, setBusy] = useState(false);
 
   async function logout() {
@@ -20,27 +21,22 @@ export function AppHeader() {
   }
 
   return (
-    <header
-      className="card"
-      style={{
-        margin: "1rem auto",
-        maxWidth: 1200,
-        display: "flex",
-        gap: "1rem",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-      }}
-    >
-      <div className="row" style={{ gap: "0.75rem" }}>
-        <strong>Assistente — saúde da mulher</strong>
-        <Link className="pill" href="/atendimentos">
+    <header className="appHeader card">
+      <nav className="navChips" aria-label="Navegação principal">
+        <span className="appHeaderBrand">Assistente — saúde da mulher</span>
+        <Link
+          className={`navChip${pathname === "/atendimentos" ? " navChip--active" : ""}`}
+          href="/atendimentos"
+        >
           Atendimentos
         </Link>
-        <Link className="pill" href="/atendimentos/novo">
+        <Link
+          className={`navChip${pathname === "/atendimentos/novo" ? " navChip--active" : ""}`}
+          href="/atendimentos/novo"
+        >
           Novo atendimento
         </Link>
-      </div>
+      </nav>
       <button className="btnSecondary" type="button" onClick={logout} disabled={busy}>
         Sair
       </button>

@@ -8,6 +8,11 @@
   --primary: #0d9488;
   --warn: #b45309;
   --border: #e2e8f0;
+  --error-text: #b91c1c;
+  --error-bg: #fef2f2;
+  --radius-card: 12px;
+  --radius-input: 10px;
+  --radius-chip: 999px;
 }
 
 * {
@@ -92,8 +97,73 @@ textarea:focus-visible {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   padding: 1rem;
+}
+
+.pageHeader {
+  margin-bottom: 0.5rem;
+}
+
+.pageTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.cardTitle {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.sectionLabel,
+.filtroBlockLabel {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sectionLabel--field {
+  display: block;
+  margin-top: 0.65rem;
+}
+
+.sectionLabel--field:first-of-type,
+.sectionLabel--field.sectionLabel--tightTop {
+  margin-top: 0;
+}
+
+.sectionLabel--block {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  font-size: 0.82rem;
+}
+
+.sectionLabel--block:first-of-type {
+  margin-top: 0;
+}
+
+.formAlert {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-input);
+  border: 1px solid #fecaca;
+  background: var(--error-bg);
+  color: var(--error-text);
+  font-size: 0.9rem;
+}
+
+.btnRow {
+  margin-top: 0.75rem;
+}
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .banner {
@@ -109,9 +179,92 @@ textarea:focus-visible {
   color: #9a3412;
 }
 
+.callout {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.callout--warn {
+  background: #fff7ed;
+  color: #7c2d12;
+  border-color: #fed7aa;
+}
+
+.callout--warn strong {
+  color: #9a3412;
+}
+
+.callout--alert {
+  background: var(--error-bg);
+  color: #7f1d1d;
+  border-color: #fecaca;
+}
+
+.callout--alert strong {
+  color: var(--error-text);
+}
+
+.appHeader {
+  margin: 1rem auto;
+  max-width: 1200px;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.navChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.appHeaderBrand {
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-right: 0.25rem;
+}
+
+.navChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.38rem 0.85rem;
+  border-radius: var(--radius-chip);
+  border: 2px solid #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.navChip:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.navChip--active {
+  border-color: var(--primary);
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.loadingHint {
+  padding: 0.75rem 0;
 }
 
 .row {
@@ -125,7 +278,7 @@ textarea.input,
 select.input,
 input.input {
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--radius-input);
   border: 1px solid var(--border);
   padding: 0.6rem 0.75rem;
   font: inherit;
@@ -187,13 +340,16 @@ textarea.input {
 }
 
 button.btn {
-  border: 0;
-  border-radius: 10px;
-  padding: 0.55rem 0.9rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-chip);
+  padding: 0.5rem 1.1rem;
+  min-height: 2.5rem;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
   background: var(--primary);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 button.btn:disabled {
@@ -202,12 +358,20 @@ button.btn:disabled {
 }
 
 button.btnSecondary {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.55rem 0.9rem;
+  border: 2px solid #cbd5e1;
+  border-radius: var(--radius-chip);
+  padding: 0.5rem 1.1rem;
+  min-height: 2.5rem;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
   background: var(--surface);
+  color: var(--text);
+}
+
+button.btnSecondary:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
 }
 
 .chatLog {
@@ -237,17 +401,30 @@ button.btnSecondary {
 
 .pill {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-chip);
   border: 1px solid var(--border);
   font-size: 0.85rem;
+  font-weight: 500;
   color: var(--muted);
+  background: #f8fafc;
 }
 
-.pillUrgent {
-  border-color: #fdba74;
-  background: #fff7ed;
-  color: #9a3412;
+.pillLink {
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: #f0fdfa;
+  text-decoration: none;
+}
+
+.pillLink:hover {
+  border-color: var(--primary);
+  background: #ccfbf1;
 }
 
 .logLine {
@@ -352,14 +529,6 @@ button.btnSecondary {
   gap: 0.65rem;
 }
 
-.filtroBlockLabel {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .filtroChips {
   display: flex;
   flex-wrap: wrap;
@@ -369,7 +538,7 @@ button.btnSecondary {
 
 .filtroChip {
   border: 2px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-chip);
   padding: 0.45rem 1rem;
   font: inherit;
   font-size: 0.9rem;
@@ -584,10 +753,11 @@ tr.gravRow--critico td:first-child {
 
 .pillNeutral {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-chip);
   border: 1px solid var(--border);
   font-size: 0.85rem;
+  font-weight: 500;
   color: var(--muted);
   background: #f8fafc;
 }

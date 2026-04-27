@@ -119,8 +119,8 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
 
   return (
     <div className="appShell">
-      <header>
-        <h1 style={{ marginTop: 0 }}>Auditoria de interações</h1>
+      <header className="pageHeader">
+        <h1 className="pageTitle">Auditoria de interações</h1>
         <p className="muted">
           Prompts, respostas e metadados persistidos após cada atendimento concluído (MVP SQLite).
         </p>
@@ -147,7 +147,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
         <section className="auditMain" aria-label="Lista e detalhe">
           <div className="card">
             <div className="filtroBlock">
-              <p className="filtroBlockLabel muted">Categorias de listagem</p>
+              <p className="sectionLabel muted">Categorias de listagem</p>
               <div className="filtroChips" role="group" aria-label="Filtrar por categoria de listagem">
                 {(
                   [
@@ -198,7 +198,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
             </div>
 
             {error ? (
-              <p role="alert" style={{ color: "#b91c1c", marginTop: "0.75rem" }}>
+              <p role="alert" className="formAlert">
                 {error}
               </p>
             ) : null}
@@ -243,7 +243,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
               </table>
             </div>
 
-            <div className="row" style={{ justifyContent: "space-between", marginTop: "0.75rem" }}>
+            <div className="btnRow row" style={{ justifyContent: "space-between" }}>
               <button
                 className="btnSecondary"
                 type="button"
@@ -275,7 +275,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
               <p className="muted">Detalhe indisponível.</p>
             ) : (
               <>
-                <h2 style={{ marginTop: 0 }}>Detalhe</h2>
+                <h2 className="cardTitle">Detalhe</h2>
                 <p className="muted" style={{ marginTop: 0 }}>
                   <strong>Pergunta:</strong> {detail.perguntaText}
                 </p>
@@ -290,22 +290,26 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                     {urgenciaLegivel(detail.urgencia)}
                   </span>
                   <span className="pillNeutral">{(detail.duracaoMs / 1000).toFixed(1)}s</span>
-                  {detail.sensitiveRedacted ? <span className="pillUrgent">Redigido</span> : null}
+                  {detail.sensitiveRedacted ? (
+                    <span className="gravUrg gravUrg--moderado" title="Conteúdo sensível omitido no registo">
+                      Redigido
+                    </span>
+                  ) : null}
                   {detail.bloqueado ? <span className="gravUrg gravUrg--critico">Bloqueado</span> : null}
                 </div>
 
-                <h3>Classificação (JSON)</h3>
+                <h3 className="sectionLabel sectionLabel--block">Classificação (JSON)</h3>
                 <pre className="codeBlock">
                   {detail.classificacaoJson || "{}"}
                 </pre>
 
-                <h3>PROMPT enviado ao LLM</h3>
+                <h3 className="sectionLabel sectionLabel--block">PROMPT enviado ao LLM</h3>
                 <pre className="codeBlock">{detail.promptText || "—"}</pre>
 
-                <h3>Resposta bruta do LLM</h3>
+                <h3 className="sectionLabel sectionLabel--block">Resposta bruta do LLM</h3>
                 <pre className="codeBlock">{detail.respostaBruta || "—"}</pre>
 
-                <h3>Trace LangGraph (MVP)</h3>
+                <h3 className="sectionLabel sectionLabel--block">Trace LangGraph (MVP)</h3>
                 <pre className="codeBlock">
                   {detail.langgraphTraceJson || "// vazio no stub — preencher quando o Python expuser o trace"}
                 </pre>

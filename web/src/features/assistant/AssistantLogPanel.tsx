@@ -8,7 +8,7 @@ type Props = {
 export const AssistantLogPanel = memo(function AssistantLogPanel({ requestId, logs }: Props) {
   return (
     <>
-      <h3>Trilha / logs (FE-INT-04)</h3>
+      <h3 className="sectionLabel sectionLabel--block">Trilha / logs (FE-INT-04)</h3>
       <p className="muted">
         <strong>x-request-id:</strong> {requestId ?? "—"}
       </p>

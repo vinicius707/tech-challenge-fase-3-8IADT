@@ -58,3 +58,12 @@ export function gravidadeUrgenciaClass(nivel: GravidadeNivel): string {
 export function filtroChipTone(id: AtendimentoFiltro): string {
   return `filtroChip filtroChip--${id}`;
 }
+
+/** Urgência em mensagens do chat (sem bloqueio/redação). */
+export function gravidadeFromUrgencia(urgencia?: string | null): GravidadeNivel {
+  const u = (urgencia || "nenhuma").toLowerCase();
+  if (u === "emergencia") return "critico";
+  if (u === "alta") return "alto";
+  if (u === "moderada") return "moderado";
+  return "rotina";
+}
