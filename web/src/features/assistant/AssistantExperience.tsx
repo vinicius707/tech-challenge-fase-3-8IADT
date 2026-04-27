@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
 import type {
   ChatMessage,
   ChatStreamRequest,
@@ -9,36 +9,14 @@ import type {
   PatientContextPayload,
   UrgenciaLevel,
 } from "@/types/assistant";
+import { AssistantExplainPanel } from "./AssistantExplainPanel";
+import { AssistantLogPanel } from "./AssistantLogPanel";
+import { AssistantMessageBubble } from "./AssistantMessageBubble";
+import { ClinicalDisclaimerBanner } from "./ClinicalDisclaimerBanner";
+import { consumeSse } from "./chatStream";
 
 function newId(): string {
   return crypto.randomUUID();
-}
-
-async function consumeSse(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  onEvent: (event: string, data: string) => void,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    for (;;) {
-      const idx = buffer.indexOf("\n\n");
-      if (idx === -1) break;
-      const block = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 2);
-
-      let eventName = "message";
-      let data = "";
-      for (const line of block.split("\n")) {
-        if (line.startsWith("event:")) eventName = line.slice(6).trim();
-        if (line.startsWith("data:")) data += line.slice(5).trim();
-      }
-      if (data) onEvent(eventName, data);
-    }
-  }
 }
 
 const FLOW_LABELS: Record<ClinicalFlowId, string> = {
@@ -49,9 +27,7 @@ const FLOW_LABELS: Record<ClinicalFlowId, string> = {
 };
 
 export type AssistantExperienceProps = {
-  /** Grava auditoria em SQLite após stream concluído. */
   persist?: boolean;
-  /** Esconde cabeçalho “marketing” quando embutido no layout autenticado. */
   embedded?: boolean;
 };
 
@@ -74,10 +50,20 @@ export function AssistantExperience({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   const abortRef = useRef<AbortController | null>(null);
   const urgenciaRef = useRef<UrgenciaLevel | null>(null);
   const startedAtRef = useRef<number>(0);
   const latestExplainRef = useRef<ExplainBlock | null>(null);
+
+  const assistantDraftRef = useRef("");
+  const streamingAssistantIdRef = useRef("");
+  const tokenFlushRafRef = useRef<number | null>(null);
+
+  const logBufferRef = useRef<string[]>([]);
+  const logFlushRafRef = useRef<number | null>(null);
 
   const needsProfessionalGate = flowId === "violenciaDomestica";
   const canSend = useMemo(() => {
@@ -87,8 +73,62 @@ export function AssistantExperience({
     return true;
   }, [busy, input, needsProfessionalGate, professionalVerified]);
 
-  const appendLog = useCallback((line: string) => {
-    setLogs((prev) => [`${new Date().toISOString()} ${line}`, ...prev].slice(0, 200));
+  const flushLogsNow = useCallback(() => {
+    if (logFlushRafRef.current != null) {
+      cancelAnimationFrame(logFlushRafRef.current);
+      logFlushRafRef.current = null;
+    }
+    const batch = logBufferRef.current;
+    logBufferRef.current = [];
+    if (batch.length === 0) return;
+    startTransition(() => {
+      setLogs((prev) =>
+        [...batch.map((l) => `${new Date().toISOString()} ${l}`), ...prev].slice(0, 200),
+      );
+    });
+  }, []);
+
+  const appendLog = useCallback(
+    (line: string) => {
+      logBufferRef.current.push(line);
+      if (logFlushRafRef.current != null) return;
+      logFlushRafRef.current = requestAnimationFrame(() => {
+        logFlushRafRef.current = null;
+        const batch = logBufferRef.current;
+        logBufferRef.current = [];
+        if (batch.length === 0) return;
+        startTransition(() => {
+          setLogs((prev) =>
+            [...batch.map((l) => `${new Date().toISOString()} ${l}`), ...prev].slice(0, 200),
+          );
+        });
+      });
+    },
+    [],
+  );
+
+  const cancelTokenFlush = useCallback(() => {
+    if (tokenFlushRafRef.current != null) {
+      cancelAnimationFrame(tokenFlushRafRef.current);
+      tokenFlushRafRef.current = null;
+    }
+  }, []);
+
+  const scheduleAssistantFlush = useCallback(() => {
+    if (tokenFlushRafRef.current != null) return;
+    tokenFlushRafRef.current = requestAnimationFrame(() => {
+      tokenFlushRafRef.current = null;
+      const text = assistantDraftRef.current;
+      const aid = streamingAssistantIdRef.current;
+      const urg = urgenciaRef.current ?? undefined;
+      setMessages((prev) => {
+        const withoutTail = prev.filter((m) => m.id !== aid);
+        return [
+          ...withoutTail,
+          { id: aid, role: "assistant" as const, content: text, urgencia: urg },
+        ];
+      });
+    });
   }, []);
 
   const send = useCallback(async () => {
@@ -113,13 +153,15 @@ export function AssistantExperience({
       }
     }
 
+    const userContent = input.trim();
     const userMsg: ChatMessage = {
       id: newId(),
       role: "user",
-      content: input.trim(),
+      content: userContent,
     };
 
-    const nextThread: ChatMessage[] = [...messages, userMsg];
+    const prev = messagesRef.current;
+    const nextThread: ChatMessage[] = [...prev, userMsg];
     setMessages(nextThread);
     setInput("");
     setBusy(true);
@@ -139,8 +181,10 @@ export function AssistantExperience({
       patientContext,
     };
 
-    let assistantText = "";
     const assistantId = newId();
+    streamingAssistantIdRef.current = assistantId;
+    assistantDraftRef.current = "";
+
     const timeoutMs = 120_000;
     const timeoutId = window.setTimeout(() => {
       abortRef.current?.abort();
@@ -176,20 +220,8 @@ export function AssistantExperience({
         }
         if (event === "token") {
           const { delta } = JSON.parse(dataJson) as { delta: string };
-          assistantText += delta;
-          const urg = urgenciaRef.current ?? undefined;
-          setMessages((prev) => {
-            const withoutTail = prev.filter((m) => m.id !== assistantId);
-            return [
-              ...withoutTail,
-              {
-                id: assistantId,
-                role: "assistant",
-                content: assistantText,
-                urgencia: urg,
-              },
-            ];
-          });
+          assistantDraftRef.current += delta;
+          scheduleAssistantFlush();
           return;
         }
         if (event === "explain") {
@@ -198,7 +230,7 @@ export function AssistantExperience({
           setExplain(ex);
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId ? { ...m, explain: ex } : m,
+              m.id === streamingAssistantIdRef.current ? { ...m, explain: ex } : m,
             ),
           );
           appendLog(`explain: ${dataJson}`);
@@ -217,6 +249,8 @@ export function AssistantExperience({
         }
       });
 
+      cancelTokenFlush();
+      const assistantText = assistantDraftRef.current;
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId
@@ -271,18 +305,24 @@ export function AssistantExperience({
       appendLog(`error: ${msg}`);
     } finally {
       window.clearTimeout(timeoutId);
+      cancelTokenFlush();
+      flushLogsNow();
       setBusy(false);
     }
   }, [
     appendLog,
+    cancelTokenFlush,
     canSend,
+    flushLogsNow,
     flowId,
-    input,
-    messages,
     needsProfessionalGate,
     patientContextText,
     persist,
+    scheduleAssistantFlush,
+    input,
   ]);
+
+  useEffect(() => () => cancelTokenFlush(), [cancelTokenFlush]);
 
   return (
     <div className="appShell">
@@ -300,12 +340,7 @@ export function AssistantExperience({
         )}
       </header>
 
-      <div className="banner" role="note">
-        <strong>Aviso clínico e legal (FE-UI-02):</strong> ferramenta de{" "}
-        <strong>apoio à decisão</strong>. Não prescreve, não diagnostica de
-        forma definitiva e não substitui avaliação presencial. Em risco ou
-        violência: acione protocolo institucional e profissionais habilitados.
-      </div>
+      <ClinicalDisclaimerBanner />
 
       <div className="appGrid">
         <section className="card" aria-labelledby="chatHeading">
@@ -316,18 +351,12 @@ export function AssistantExperience({
               <p className="muted">Nenhuma mensagem ainda.</p>
             ) : (
               messages.map((m) => (
-                <div
+                <AssistantMessageBubble
                   key={m.id}
-                  className={`bubble ${m.role === "user" ? "user" : "assistant"}`}
-                >
-                  <div className="row" style={{ justifyContent: "space-between" }}>
-                    <strong>{m.role === "user" ? "Você" : "Assistente"}</strong>
-                    {m.urgencia && m.urgencia !== "nenhuma" ? (
-                      <span className="pillUrgent">Urgência: {m.urgencia}</span>
-                    ) : null}
-                  </div>
-                  <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
-                </div>
+                  role={m.role}
+                  content={m.content}
+                  urgencia={m.urgencia}
+                />
               ))
             )}
           </div>
@@ -390,9 +419,8 @@ export function AssistantExperience({
 
           {needsProfessionalGate ? (
             <div className="banner" style={{ marginTop: "0.75rem" }}>
-              <strong>Gate de identidade (FE-SEC-01 / RF-SEC-02):</strong> confirme
-              que representa um <strong>profissional autorizado</strong> neste
-              ambiente de demonstração.
+              <strong>Gate de identidade (FE-SEC-01 / RF-SEC-02):</strong> confirme que representa
+              um <strong>profissional autorizado</strong> neste ambiente de demonstração.
               <div className="row" style={{ marginTop: "0.5rem" }}>
                 <button
                   type="button"
@@ -417,53 +445,9 @@ export function AssistantExperience({
           />
 
           <h3>Explainability (FE-UI-01 / RF-SEC-04)</h3>
-          {!explain ? (
-            <p className="muted">Aguardando resposta…</p>
-          ) : (
-            <div className="bubble assistant">
-              <div>
-                <strong>Fonte:</strong> {explain.fonte ?? "—"}
-              </div>
-              <div>
-                <strong>Confiança:</strong>{" "}
-                {explain.confianca === undefined
-                  ? "—"
-                  : `${Math.round(explain.confianca * 100)}%`}
-              </div>
-              {explain.raciocinioClinico ? (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <strong>Raciocínio (alto nível):</strong>{" "}
-                  <span style={{ whiteSpace: "pre-wrap" }}>
-                    {explain.raciocinioClinico}
-                  </span>
-                </div>
-              ) : null}
-              <div style={{ marginTop: "0.5rem" }}>
-                <strong>Lacunas:</strong>
-                <ul>
-                  {(explain.lacunas ?? []).map((l) => (
-                    <li key={l}>{l}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
+          <AssistantExplainPanel explain={explain} />
 
-          <h3>Trilha / logs (FE-INT-04)</h3>
-          <p className="muted">
-            <strong>x-request-id:</strong> {requestId ?? "—"}
-          </p>
-          <div style={{ maxHeight: 220, overflow: "auto" }}>
-            {logs.length === 0 ? (
-              <p className="muted">Sem eventos.</p>
-            ) : (
-              logs.map((l) => (
-                <div key={l} className="logLine">
-                  {l}
-                </div>
-              ))
-            )}
-          </div>
+          <AssistantLogPanel requestId={requestId} logs={logs} />
         </aside>
       </div>
     </div>

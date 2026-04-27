@@ -1,16 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AtendimentoDetail, AtendimentoFiltro, AtendimentoListItem } from "@/types/atendimento";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AtendimentosListResult } from "@/lib/atendimentos-list";
+import type { AtendimentoDetail, AtendimentoFiltro } from "@/types/atendimento";
+import { AtendimentoTableRow } from "./AtendimentoTableRow";
 
-type ListResponse = {
-  page: number;
-  pageSize: number;
-  total: number;
-  agregados: { total: number; emergencias: number; bloqueados: number };
-  items: AtendimentoListItem[];
-};
+type ListResponse = AtendimentosListResult;
 
 function fmtDate(ts: number): string {
   const d = new Date(ts);
@@ -23,18 +19,24 @@ function fmtDate(ts: number): string {
   });
 }
 
-export function AtendimentosDashboard() {
+export type AtendimentosDashboardProps = {
+  initialData?: ListResponse | null;
+};
+
+export function AtendimentosDashboard({ initialData = null }: AtendimentosDashboardProps) {
   const router = useRouter();
   const [filtro, setFiltro] = useState<AtendimentoFiltro>("todas");
   const [soEmergencias, setSoEmergencias] = useState(false);
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<ListResponse | null>(null);
+  const [data, setData] = useState<ListResponse | null>(() => initialData ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AtendimentoDetail | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
+
+  const mountedRef = useRef(false);
 
   const query = useMemo(() => {
     const p = new URLSearchParams();
@@ -64,8 +66,14 @@ export function AtendimentosDashboard() {
   }, [query, router]);
 
   useEffect(() => {
+    const isFirst = !mountedRef.current;
+    if (isFirst) mountedRef.current = true;
+    if (isFirst && initialData && filtro === "todas" && page === 1 && !soEmergencias) {
+      setData(initialData);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, initialData, filtro, page, soEmergencias]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -90,6 +98,10 @@ export function AtendimentosDashboard() {
       cancelled = true;
     };
   }, [selectedId]);
+
+  const onSelectRow = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -192,32 +204,13 @@ export function AtendimentosDashboard() {
                     </tr>
                   ) : null}
                   {data?.items.map((row) => (
-                    <tr
+                    <AtendimentoTableRow
                       key={row.id}
-                      className={selectedId === row.id ? "rowSelected" : undefined}
-                    >
-                      <td>
-                        <button
-                          type="button"
-                          className="linkButton"
-                          onClick={() => setSelectedId(row.id)}
-                        >
-                          {fmtDate(row.createdAt)}
-                        </button>
-                      </td>
-                      <td style={{ maxWidth: 420 }}>{row.perguntaText}</td>
-                      <td>
-                        <span className="pill">
-                          {row.categoria}{" "}
-                          {row.categoriaConfidence != null
-                            ? `${Math.round(row.categoriaConfidence * 100)}%`
-                            : ""}
-                        </span>
-                      </td>
-                      <td>{row.segurancaStatus === "ok" ? "✓ OK" : row.segurancaStatus}</td>
-                      <td>{row.fontesCount}</td>
-                      <td>{(row.duracaoMs / 1000).toFixed(1)}s</td>
-                    </tr>
+                      row={row}
+                      selected={selectedId === row.id}
+                      dateLabel={fmtDate(row.createdAt)}
+                      onSelect={onSelectRow}
+                    />
                   ))}
                 </tbody>
               </table>

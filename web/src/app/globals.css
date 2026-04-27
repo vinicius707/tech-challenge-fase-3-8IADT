@@ -279,6 +279,11 @@ button.btnSecondary {
   font-size: 0.95rem;
 }
 
+.table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2.5rem;
+}
+
 .table th,
 .table td {
   border-bottom: 1px solid var(--border);
