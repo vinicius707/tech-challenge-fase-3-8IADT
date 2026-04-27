@@ -345,6 +345,253 @@ button.btnSecondary {
   background: #ecfeff;
 }
 
+/* —— Filtros de listagem (categorias) —— */
+.filtroBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.filtroBlockLabel {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.filtroChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.filtroChip {
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.filtroChip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.filtroChip--todas {
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.filtroChip--medico {
+  border-color: #5eead4;
+  color: #0f766e;
+  background: linear-gradient(180deg, #f0fdfa 0%, #fff 100%);
+}
+
+.filtroChip--fora_escopo {
+  border-color: #c4b5fd;
+  color: #5b21b6;
+  background: linear-gradient(180deg, #f5f3ff 0%, #fff 100%);
+}
+
+.filtroChip--emergencia {
+  border-color: #fca5a5;
+  color: #b91c1c;
+  background: linear-gradient(180deg, #fef2f2 0%, #fff 100%);
+}
+
+.filtroChip--bloqueado {
+  border-color: #fcd34d;
+  color: #92400e;
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
+}
+
+.filtroChip--active.filtroChip--todas {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #1e293b;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+}
+
+.filtroChip--active.filtroChip--medico {
+  background: #0d9488;
+  color: #fff;
+  border-color: #0f766e;
+  box-shadow: 0 2px 10px rgba(13, 148, 136, 0.35);
+}
+
+.filtroChip--active.filtroChip--fora_escopo {
+  background: #6d28d9;
+  color: #fff;
+  border-color: #5b21b6;
+  box-shadow: 0 2px 10px rgba(109, 40, 217, 0.3);
+}
+
+.filtroChip--active.filtroChip--emergencia {
+  background: #dc2626;
+  color: #fff;
+  border-color: #b91c1c;
+  box-shadow: 0 2px 12px rgba(220, 38, 38, 0.35);
+}
+
+.filtroChip--active.filtroChip--bloqueado {
+  background: #d97706;
+  color: #fff;
+  border-color: #b45309;
+  box-shadow: 0 2px 10px rgba(217, 119, 6, 0.35);
+}
+
+.filtroEmergOnly {
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.gravLegenda {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.gravLegendaTitle {
+  font-weight: 600;
+  color: var(--text);
+  margin-right: 0.25rem;
+}
+
+.gravLegendaSample {
+  font-size: 0.75rem;
+  padding: 0.12rem 0.45rem;
+}
+
+.gravLegendaHint {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  opacity: 0.9;
+}
+
+/* —— Gravidade do atendimento (tabela) —— */
+tr.gravRow td:first-child {
+  box-shadow: inset 4px 0 0 transparent;
+}
+
+tr.gravRow--rotina td:first-child {
+  box-shadow: inset 4px 0 0 #64748b;
+}
+
+tr.gravRow--moderado td:first-child {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+
+tr.gravRow--alto td:first-child {
+  box-shadow: inset 4px 0 0 #ea580c;
+}
+
+tr.gravRow--critico td:first-child {
+  box-shadow: inset 4px 0 0 #dc2626;
+}
+
+.gravPill {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  max-width: 100%;
+}
+
+.gravPill--rotina {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.gravPill--moderado {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.gravPill--alto {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.gravPill--critico {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.gravUrg {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+
+.gravUrg--rotina {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.gravUrg--moderado {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.gravUrg--alto {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.gravUrg--critico {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.gravSegCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  align-items: flex-start;
+}
+
+.gravSegStatus {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.pillNeutral {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: #f8fafc;
+}
+
 .linkButton {
   border: 0;
   background: transparent;

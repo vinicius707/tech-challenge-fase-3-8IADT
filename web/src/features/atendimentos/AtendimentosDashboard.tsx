@@ -2,6 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  filtroChipTone,
+  gravidadeFromItem,
+  gravidadePillClass,
+  gravidadeTitulo,
+  gravidadeUrgenciaClass,
+  urgenciaLegivel,
+} from "@/lib/atendimento-gravidade";
 import type { AtendimentosListResult } from "@/lib/atendimentos-list";
 import type { AtendimentoDetail, AtendimentoFiltro } from "@/types/atendimento";
 import { AtendimentoTableRow } from "./AtendimentoTableRow";
@@ -104,6 +112,10 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
   }, []);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const detailGravNivel = useMemo(
+    () => (detail ? gravidadeFromItem(detail) : null),
+    [detail],
+  );
 
   return (
     <div className="appShell">
@@ -134,30 +146,35 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
 
         <section className="auditMain" aria-label="Lista e detalhe">
           <div className="card">
-            <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
-              {(
-                [
-                  ["todas", "Todas"],
-                  ["medico", "Médico"],
-                  ["fora_escopo", "Fora do escopo"],
-                  ["emergencia", "Emergência"],
-                  ["bloqueado", "Bloqueado"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={filtro === id ? "btn" : "btnSecondary"}
-                  onClick={() => {
-                    setFiltro(id);
-                    setPage(1);
-                  }}
-                  disabled={busy}
-                >
-                  {label}
-                </button>
-              ))}
-              <label className="row" style={{ gap: "0.35rem", marginLeft: "auto" }}>
+            <div className="filtroBlock">
+              <p className="filtroBlockLabel muted">Categorias de listagem</p>
+              <div className="filtroChips" role="group" aria-label="Filtrar por categoria de listagem">
+                {(
+                  [
+                    ["todas", "Todas", "Visão geral"],
+                    ["medico", "Médico", "Triagem clínica / GO"],
+                    ["fora_escopo", "Fora do escopo", "Interações fora do domínio"],
+                    ["emergencia", "Emergência", "Alta urgência ou emergência"],
+                    ["bloqueado", "Bloqueado", "Bloqueadas por segurança"],
+                  ] as const
+                ).map(([id, label, hint]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${filtroChipTone(id)}${filtro === id ? " filtroChip--active" : ""}`}
+                    title={hint}
+                    aria-pressed={filtro === id}
+                    onClick={() => {
+                      setFiltro(id);
+                      setPage(1);
+                    }}
+                    disabled={busy}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="filtroEmergOnly row">
                 <input
                   type="checkbox"
                   checked={soEmergencias}
@@ -166,8 +183,18 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                     setPage(1);
                   }}
                 />
-                <span className="muted">Somente emergências</span>
+                <span className="muted">Refinar: somente emergências (alta + emergência)</span>
               </label>
+              <p className="gravLegenda muted" aria-hidden="true">
+                <strong className="gravLegendaTitle">Gravidade na tabela:</strong>
+                <span className="gravUrg gravUrg--rotina gravLegendaSample">Rotina</span>
+                <span className="gravUrg gravUrg--moderado gravLegendaSample">Moderado</span>
+                <span className="gravUrg gravUrg--alto gravLegendaSample">Alto</span>
+                <span className="gravUrg gravUrg--critico gravLegendaSample">Crítico</span>
+                <span className="gravLegendaHint">
+                  (cor na linha, na categoria e na urgência; crítico = emergência ou bloqueado)
+                </span>
+              </p>
             </div>
 
             {error ? (
@@ -183,7 +210,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                     <th scope="col">Data/Hora</th>
                     <th scope="col">Pergunta</th>
                     <th scope="col">Categoria</th>
-                    <th scope="col">Segurança</th>
+                    <th scope="col">Urgência / segurança</th>
                     <th scope="col">Fontes</th>
                     <th scope="col">Duração</th>
                   </tr>
@@ -252,10 +279,19 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                 <p className="muted" style={{ marginTop: 0 }}>
                   <strong>Pergunta:</strong> {detail.perguntaText}
                 </p>
-                <div className="row" style={{ gap: "0.5rem" }}>
-                  <span className="pill">{detail.categoria}</span>
-                  <span className="pill">{(detail.duracaoMs / 1000).toFixed(1)}s</span>
+                <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <span
+                    className={gravidadePillClass(detailGravNivel ?? "rotina")}
+                    title={gravidadeTitulo(detailGravNivel ?? "rotina")}
+                  >
+                    {detail.categoria}
+                  </span>
+                  <span className={gravidadeUrgenciaClass(detailGravNivel ?? "rotina")}>
+                    {urgenciaLegivel(detail.urgencia)}
+                  </span>
+                  <span className="pillNeutral">{(detail.duracaoMs / 1000).toFixed(1)}s</span>
                   {detail.sensitiveRedacted ? <span className="pillUrgent">Redigido</span> : null}
+                  {detail.bloqueado ? <span className="gravUrg gravUrg--critico">Bloqueado</span> : null}
                 </div>
 
                 <h3>Classificação (JSON)</h3>

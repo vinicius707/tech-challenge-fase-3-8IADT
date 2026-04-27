@@ -1,4 +1,12 @@
 import { memo } from "react";
+import {
+  gravidadeFromItem,
+  gravidadePillClass,
+  gravidadeRowClass,
+  gravidadeTitulo,
+  gravidadeUrgenciaClass,
+  urgenciaLegivel,
+} from "@/lib/atendimento-gravidade";
 import type { AtendimentoListItem } from "@/types/atendimento";
 
 type Props = {
@@ -14,8 +22,11 @@ export const AtendimentoTableRow = memo(function AtendimentoTableRow({
   dateLabel,
   onSelect,
 }: Props) {
+  const nivel = gravidadeFromItem(row);
+  const trClass = [gravidadeRowClass(nivel), selected ? "rowSelected" : ""].filter(Boolean).join(" ");
+
   return (
-    <tr className={selected ? "rowSelected" : undefined}>
+    <tr className={trClass}>
       <td>
         <button type="button" className="linkButton" onClick={() => onSelect(row.id)}>
           {dateLabel}
@@ -23,14 +34,23 @@ export const AtendimentoTableRow = memo(function AtendimentoTableRow({
       </td>
       <td style={{ maxWidth: 420 }}>{row.perguntaText}</td>
       <td>
-        <span className="pill">
-          {row.categoria}{" "}
+        <span className={gravidadePillClass(nivel)} title={gravidadeTitulo(nivel)}>
+          {row.categoria}
           {row.categoriaConfidence != null
-            ? `${Math.round(row.categoriaConfidence * 100)}%`
+            ? ` · ${Math.round(row.categoriaConfidence * 100)}%`
             : ""}
         </span>
       </td>
-      <td>{row.segurancaStatus === "ok" ? "✓ OK" : row.segurancaStatus}</td>
+      <td>
+        <div className="gravSegCell">
+          <span className={gravidadeUrgenciaClass(nivel)} title={gravidadeTitulo(nivel)}>
+            {urgenciaLegivel(row.urgencia)}
+          </span>
+          <span className="gravSegStatus">
+            {row.segurancaStatus === "ok" ? "Segurança: OK" : `Seg.: ${row.segurancaStatus}`}
+          </span>
+        </div>
+      </td>
       <td>{row.fontesCount}</td>
       <td>{(row.duracaoMs / 1000).toFixed(1)}s</td>
     </tr>
