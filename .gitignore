@@ -1,0 +1,5 @@
+# Ferramentas e agentes locais (não versionar)
+.agents/
+.claude/
+.cursor/
+.windsurf/
