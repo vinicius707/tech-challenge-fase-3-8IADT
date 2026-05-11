@@ -14,3 +14,30 @@ web/.env
 web/data/*.db
 web/data/*.db-shm
 web/data/*.db-wal
+
+# Python IA Core
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.env
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Artefatos pesados de IA (versionar apenas metadados/exemplos)
+data/raw/medquad/*
+!data/raw/medquad/.gitkeep
+data/processed/*.jsonl
+data/*.jsonl
+outputs/vectorstore/*
+!outputs/vectorstore/.gitkeep
+outputs/model/*
+!outputs/model/.gitkeep
+outputs/reports/*.md
+!outputs/reports/.gitkeep
+logs/*.log
+!logs/.gitkeep

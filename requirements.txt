@@ -1,0 +1,30 @@
+# Runtime do servico IA Core (FastAPI + RAG + LangGraph + dataset Kaggle)
+# Atende IA-A2 (Fase A) e dependencias minimas do design.md secao 3.
+# Versoes pinadas em faixas estaveis para o MVP academico.
+
+# --- HTTP / API ---
+fastapi>=0.111,<0.116
+uvicorn[standard]>=0.30,<0.32
+pydantic>=2.7,<3
+python-dotenv>=1.0,<2
+httpx>=0.27,<0.29
+sse-starlette>=2.1,<3
+
+# --- Orquestracao / LLM ---
+langchain>=0.2.10,<0.4
+langchain-community>=0.2.10,<0.4
+langgraph>=0.1.14,<0.3
+openai>=1.40,<2
+
+# --- RAG (embeddings + vector store) ---
+sentence-transformers>=2.7,<4
+faiss-cpu>=1.8,<1.9
+
+# --- Dados (Kaggle MedQuAD - D8 / IA-DATA-01) ---
+kagglehub>=0.2.9,<0.4
+pandas>=2.2,<3
+pyyaml>=6,<7
+
+# --- Testes ---
+pytest>=8,<9
+pytest-asyncio>=0.23,<1

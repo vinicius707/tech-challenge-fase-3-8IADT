@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra -q"
+pythonpath = ["."]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
