@@ -7,6 +7,7 @@ import type {
   ClinicalFlowId,
   ExplainBlock,
   PatientContextPayload,
+  TraceSummary,
   UrgenciaLevel,
 } from "@/types/assistant";
 import { AssistantExplainPanel } from "./AssistantExplainPanel";
@@ -58,6 +59,7 @@ export function AssistantExperience({
   const urgenciaRef = useRef<UrgenciaLevel | null>(null);
   const startedAtRef = useRef<number>(0);
   const latestExplainRef = useRef<ExplainBlock | null>(null);
+  const latestTraceRef = useRef<TraceSummary | null>(null);
 
   const assistantDraftRef = useRef("");
   const streamingAssistantIdRef = useRef("");
@@ -169,6 +171,7 @@ export function AssistantExperience({
     setExplain(null);
     urgenciaRef.current = null;
     latestExplainRef.current = null;
+    latestTraceRef.current = null;
     startedAtRef.current = Date.now();
 
     abortRef.current?.abort();
@@ -241,6 +244,15 @@ export function AssistantExperience({
           appendLog(`log: ${dataJson}`);
           return;
         }
+        if (event === "trace") {
+          try {
+            latestTraceRef.current = JSON.parse(dataJson) as TraceSummary;
+          } catch {
+            // trace ainda nao crítico para a UI; mantém logs mas não bloqueia.
+          }
+          appendLog(`trace: ${dataJson}`);
+          return;
+        }
         if (event === "error") {
           const err = JSON.parse(dataJson) as { message?: string };
           throw new Error(err.message || "Erro no stream");
@@ -287,7 +299,9 @@ export function AssistantExperience({
               promptText,
               respostaBruta: assistantText,
               classificacaoJson: explainSnap ? JSON.stringify(explainSnap) : undefined,
-              langgraphTraceJson: null,
+              langgraphTraceJson: latestTraceRef.current
+                ? JSON.stringify(latestTraceRef.current)
+                : null,
             }),
           });
           if (!pres.ok) {

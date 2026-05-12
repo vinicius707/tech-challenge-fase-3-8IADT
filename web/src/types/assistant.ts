@@ -47,6 +47,7 @@ export type SseEventName =
   | "token"
   | "explain"
   | "log"
+  | "trace"
   | "done"
   | "error";
 
@@ -54,6 +55,7 @@ export interface SseMetaPayload {
   requestId: string;
   flowId: ClinicalFlowId;
   modelVersion?: string;
+  urgencia?: UrgenciaLevel;
 }
 
 export interface SseTokenPayload {
@@ -69,4 +71,17 @@ export interface SseLogPayload {
 export interface SseErrorPayload {
   code: string;
   message: string;
+}
+
+export interface TraceNode {
+  name: string;
+  status?: "ok" | "skipped" | "blocked" | "error";
+  summary?: string;
+  safetyFlags?: string[];
+}
+
+export interface TraceSummary {
+  flowId: ClinicalFlowId;
+  nodes: TraceNode[];
+  finalRisk?: UrgenciaLevel | null;
 }
