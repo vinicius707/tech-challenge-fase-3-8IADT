@@ -84,21 +84,28 @@ python fase2_finetuning/validate_adapters.py
 
 Sincronizados entre `train_lora.py` e o notebook:
 
-| Parâmetro | Valor | Justificativa |
-|---|---|---|
-| `base_model` | `meta-llama/Llama-3.2-3B-Instruct` | Bom balanço qualidade/VRAM em T4. Alternativa documentada: `Qwen/Qwen2.5-1.5B-Instruct`. |
-| `lora.r` | `16` | Faixa intermediária para domínios pequenos. |
-| `lora.lora_alpha` | `32` | `alpha = 2 × r`, regra estável para SFT. |
-| `lora.lora_dropout` | `0.05` | Reduz overfitting do dataset enxuto. |
-| `target_modules` | `q_proj,k_proj,v_proj,o_proj` | Cobre atenção (suficiente para ajuste de estilo). |
-| `epochs` | `2` | Evita memorização no corpus pequeno. |
-| `batch_size × grad_accum` | `1 × 8` | Compatível com 16 GB de VRAM. |
-| `learning_rate` | `2e-4` | Padrão SFT/LoRA. |
-| `optim` | resolvido por device | `paged_adamw_8bit` em CUDA / `adamw_torch` em MPS e CPU. |
-| `bf16` | resolvido por device | `True` em CUDA/MPS; `False` (fp32) em CPU. |
-| `max_seq_length` | `1024` | Trade-off com `messages` mais longos. |
+| Parâmetro | Valor canônico | Valor desta entrega | Justificativa |
+|---|---|---|---|
+| `base_model` | `meta-llama/Llama-3.2-3B-Instruct` | `meta-llama/Llama-3.2-1B-Instruct` | Versão 1B foi escolhida para a execução real em Apple Silicon (M4); 3B é o canônico em GPU dedicada. Alternativa aberta: `Qwen/Qwen2.5-1.5B-Instruct`. |
+| `lora.r` | `16` | `16` | Faixa intermediária para domínios pequenos. |
+| `lora.lora_alpha` | `32` | `32` | `alpha = 2 × r`, regra estável para SFT. |
+| `lora.lora_dropout` | `0.05` | `0.05` | Reduz overfitting do dataset enxuto. |
+| `target_modules` | `q_proj,k_proj,v_proj,o_proj` | idem | Cobre atenção (suficiente para ajuste de estilo). |
+| `epochs` | `2` | `2` | Evita memorização no corpus pequeno. |
+| `batch_size × grad_accum` | `1 × 8` | `1 × 2` (MPS) | Reduzido em MPS por throughput; em CUDA T4 manter `1 × 8`. |
+| `learning_rate` | `2e-4` | `2e-4` | Padrão SFT/LoRA. |
+| `optim` | resolvido por device | `adamw_torch` (MPS) | `paged_adamw_8bit` em CUDA / `adamw_torch` em MPS e CPU. |
+| `bf16` | resolvido por device | `True` (MPS) | `True` em CUDA/MPS; `False` (fp32) em CPU. |
+| `max_seq_length` | `1024` | `512` (MPS) | Reduzido em MPS para acelerar; em CUDA voltar a 1024 quando possível. |
 
-Override por env vars: `FT_BASE_MODEL`, `FT_EPOCHS`, `FT_LR`, `FT_OUTPUT_DIR`. Flag `--device cuda|mps|cpu` força a escolha quando necessário.
+Override por env vars: `FT_BASE_MODEL`, `FT_EPOCHS`, `FT_LR`, `FT_OUTPUT_DIR`. Flag `--device cuda|mps|cpu` força a escolha quando necessário. Os flags `--max-seq-length`, `--gradient-accumulation-steps`, `--per-device-batch-size`, `--max-train-samples` e `--max-val-samples` permitem ajustar throughput sem editar código (úteis em MPS).
+
+Os valores efetivamente usados nesta entrega ficam registrados em `outputs/model/metadata.json` (`training.results`):
+
+- `train_loss = 1.2287`
+- `eval_loss = 1.1917` (menor que `train_loss` → sem overfit)
+- `eval_runtime_s = 233.2231` (≈ 4 min sobre 557 exemplos de validação)
+- `device_target = mps`
 
 ## 4. Distribuição do adapter (canal externo)
 
@@ -119,17 +126,39 @@ Download em qualquer máquina:
 huggingface-cli download <org>/femcare-llama32-lora --local-dir outputs/model
 ```
 
-### 4.2 GitHub Release (fallback)
+### 4.2 GitHub Release (canal atual deste projeto)
 
-Quando não há HF Hub disponível:
+O adapter real desta entrega está publicado como asset do GitHub Release [`ia-core-phase-h-v0.1`](https://github.com/vinicius707/tech-challenge-fase-3-8IADT/releases/tag/ia-core-phase-h-v0.1) (tarball `femcare-lora-v0.1.tar.gz`, ~15 MB).
+
+| | |
+|---|---|
+| Tag | `ia-core-phase-h-v0.1` |
+| Asset | `femcare-lora-v0.1.tar.gz` |
+| SHA256 do tarball | `e29c490837f9c1fbd4d4e63e4962459d99ce36c4aad23ac6d3aaa7cad3d0a46f` |
+| Conteúdo | adapter PEFT + tokenizer (`adapter_model.safetensors`, `adapter_config.json`, `tokenizer*`, `special_tokens_map.json`, `training_args.bin`, `README.md`) |
+
+Para baixar e instalar localmente (corresponde a `artifacts.external.download_command` em `outputs/model/metadata.json`):
 
 ```bash
-cd outputs/model
-zip -r ../../adapter.zip .
-gh release create v0.1.0-lora ../../adapter.zip --notes 'LoRA adapter Fase H'
+mkdir -p outputs/model
+curl -L https://github.com/vinicius707/tech-challenge-fase-3-8IADT/releases/download/ia-core-phase-h-v0.1/femcare-lora-v0.1.tar.gz \
+  | tar -xzf - -C outputs/model
+python fase2_finetuning/validate_adapters.py
 ```
 
-Download via `gh release download v0.1.0-lora -p adapter.zip && unzip adapter.zip -d outputs/model`.
+Para republicar uma nova versão:
+
+```bash
+mkdir -p outputs/dist
+tar -czvf outputs/dist/femcare-lora-vX.Y.tar.gz -C outputs/model \
+  adapter_config.json adapter_model.safetensors special_tokens_map.json \
+  tokenizer.json tokenizer_config.json training_args.bin README.md
+gh release create ia-core-phase-h-vX.Y outputs/dist/femcare-lora-vX.Y.tar.gz \
+  --title "IA Core - Fine-tuning Phase H - vX.Y" \
+  --notes "..."
+```
+
+Atualize `artifacts.external.{release_tag,release_url,asset_url,sha256}` em `outputs/model/metadata.json` após o upload.
 
 ### 4.3 Git LFS (último recurso)
 
@@ -224,6 +253,34 @@ IA_LLM_BACKEND=local_lora python -m fase3_orquestracao.llm_backend --prompt 'tes
 ```
 
 > Os guardrails da Fase E (`fase4_seguranca/safety_guard.py`) e o router clínico da Fase F (`fase3_orquestracao/clinical_router.py`) **continuam autoritativos** — o modelo treinado nunca decide diagnóstico ou prescrição sozinho.
+
+### 6.6 Evidência do deploy desta entrega
+
+O fluxo da seção 6 foi executado de ponta a ponta para esta entrega, com os artefatos efetivamente registrados no Ollama e o `modelVersion` propagado pelo SSE:
+
+| Etapa | Saída |
+|---|---|
+| `convert_hf_to_gguf.py` | `outputs/model_merged/femcare.f16.gguf` (~2.47 GB, 147 tensors) |
+| `llama-quantize q4_k_m` | `outputs/model_merged/femcare-q4_k_m.gguf` (~762 MB, 5.18 BPW) |
+| `ollama create femcare:v0.1` | `5cb61a7cc9a6` (807 MB no Ollama, 100% GPU em M4) |
+| `ollama show femcare:v0.1` | arch `llama`, 1.2B params, `Q4_K_M`, SYSTEM prompt aplicado |
+
+Comando de validação no IA Core:
+
+```bash
+IA_LLM_BACKEND=ollama OLLAMA_MODEL=femcare:v0.1 \
+OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 OLLAMA_API_KEY=ollama \
+.venv/bin/uvicorn fase3_orquestracao.app:app --port 8000
+```
+
+Resposta capturada em `POST /v1/chat/stream` para um caso do fluxo `prevencao` (primeiro evento do SSE):
+
+```
+event: meta
+data: {"requestId":"862e2ea3-...","flowId":"prevencao","modelVersion":"ollama:femcare:v0.1","urgencia":"nenhuma"}
+```
+
+O `modelVersion` real (`ollama:femcare:v0.1`) **substitui o `stub-0.1.0`** quando o IA Core está configurado para o modelo treinado, encerrando os requisitos **IA-D2** e **IA-G2** com evidência reproduzível. Sequência completa observada: `meta → log* → token* → explain → trace → done`.
 
 ## 7. Limitações e éticas
 
