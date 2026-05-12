@@ -4,6 +4,7 @@
 .cursor/
 .windsurf/
 .specs/
+.tools/
 
 # Next.js (web/)
 web/node_modules/
@@ -39,6 +40,7 @@ outputs/model/*
 !outputs/model/.gitkeep
 !outputs/model/metadata.json
 outputs/model_merged/
+outputs/dist/
 outputs/reports/*.md
 outputs/reports/*.json
 !outputs/reports/.gitkeep
