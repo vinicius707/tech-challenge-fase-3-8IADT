@@ -45,10 +45,12 @@ ollama list             # esperado: femcare:v0.1 (~807 MB, Q4_K_M)
 ```bash
 IA_LLM_BACKEND=ollama \
 OLLAMA_MODEL=femcare:v0.1 \
-OLLAMA_BASE_URL=http://127.0.0.1:11434/v1 \
+OLLAMA_BASE_URL=http://127.0.0.1:11434 \
 OLLAMA_API_KEY=ollama \
 .venv/bin/uvicorn fase3_orquestracao.app:app --port 8000
 ```
+
+> A partir desta entrega o IA Core aceita tanto `http://127.0.0.1:11434` quanto `http://127.0.0.1:11434/v1` em `OLLAMA_BASE_URL` — o sufixo `/v1` é anexado automaticamente quando ausente. Se preferir desativar o polish via LLM (uso somente do rascunho determinístico) defina `IA_LLM_POLISH=0`; consulte `docs/llm-backends.md` para todos os parâmetros (`IA_LLM_POLISH_TIMEOUT_S`, `IA_LLM_POLISH_TEMPERATURE`).
 
 Verifique:
 
