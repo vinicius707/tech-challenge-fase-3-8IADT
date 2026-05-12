@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
-  "created_at": "2026-05-12T12:39:15Z",
-  "mode": "dry_run",
+  "created_at": "2026-05-12T18:32:09Z",
+  "mode": "trained",
   "purpose": "Ajuste de formato/linguagem em portugues clinico para os quatro fluxos de saude da mulher (triagem, violencia, obstetrico, prevencao). Nao deve ser usado como unica fonte de raciocinio clinico.",
   "base_model": {
-    "name": "meta-llama/Llama-3.2-3B-Instruct",
+    "name": "meta-llama/Llama-3.2-1B-Instruct",
     "license": "Consulte o card do modelo no Hugging Face Hub."
   },
   "lora_config": {
@@ -23,17 +23,22 @@
   "training": {
     "epochs": 2,
     "per_device_train_batch_size": 1,
-    "gradient_accumulation_steps": 8,
+    "gradient_accumulation_steps": 2,
     "learning_rate": 0.0002,
-    "max_seq_length": 1024,
+    "max_seq_length": 512,
     "warmup_ratio": 0.05,
     "lr_scheduler_type": "cosine",
     "optim": "adamw_torch",
-    "bf16": false,
+    "bf16": true,
     "seed": 42,
     "framework": "trl.SFTTrainer",
-    "device_target": "cpu",
-    "results": null
+    "device_target": "mps",
+    "results": {
+      "device": "mps",
+      "train_loss": 1.2287025691147877,
+      "eval_loss": 1.1916537284851074,
+      "eval_runtime_s": 233.2231
+    }
   },
   "dataset": {
     "source": "MedQuAD (pythonafroz/medquad-medical-question-answer-for-ai-research) + complementos sinteticos curados (synthetic_protocol_v1)",
@@ -69,7 +74,36 @@
     }
   },
   "artifacts": {
-    "local": null,
+    "local": {
+      "directory": "outputs/model",
+      "files": [
+        {
+          "path": "outputs/model/adapter_model.safetensors",
+          "size_bytes": 13648488,
+          "sha256": "9045efd233e717039a1d3ad2f244170421261e347144dae061f7de3566751bfe"
+        },
+        {
+          "path": "outputs/model/adapter_config.json",
+          "size_bytes": 686,
+          "sha256": "e47983b1b9f320c149302a618589955166ef104447f0260c3d2300c8f92f3363"
+        },
+        {
+          "path": "outputs/model/tokenizer.json",
+          "size_bytes": 17210018,
+          "sha256": "9c85066e7642934ed09b44155e6566b0b5dab2637fb9433439ba5c9c7f8b50d3"
+        },
+        {
+          "path": "outputs/model/tokenizer_config.json",
+          "size_bytes": 54557,
+          "sha256": "df757249013ee916c1318f170d2763cc2272d10d66c5d73a792ce34c2bd8cbb6"
+        },
+        {
+          "path": "outputs/model/special_tokens_map.json",
+          "size_bytes": 325,
+          "sha256": "1b1835caa5b4d70acaa210fa222b0036f1882f9525c4660fd4810fb3e1e40ff8"
+        }
+      ]
+    },
     "external": {
       "preferred_channel": "huggingface_hub",
       "huggingface_repo": "<org>/femcare-llama32-lora",
@@ -80,10 +114,10 @@
     }
   },
   "environment": {
-    "python": "3.12.13",
+    "python": "3.13.9",
     "platform": "Darwin 25.3.0",
     "machine": "arm64",
-    "device": "cpu"
+    "device": "mps"
   },
   "notes": [
     "Fine-tuning trata formato/linguagem - NAO substitui RAG nem guardrails.",

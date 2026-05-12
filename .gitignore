@@ -38,6 +38,7 @@ outputs/vectorstore/*
 outputs/model/*
 !outputs/model/.gitkeep
 !outputs/model/metadata.json
+outputs/model_merged/
 outputs/reports/*.md
 outputs/reports/*.json
 !outputs/reports/.gitkeep

@@ -120,7 +120,7 @@ def test_validate_detects_missing_local_adapter(tmp_path: Path) -> None:
         "directory": "outputs/model",
         "files": [
             {
-                "path": "outputs/model/adapter_model.safetensors",
+                "path": "outputs/model/__missing_test_artifact__.safetensors",
                 "size_bytes": 12345,
                 "sha256": "0" * 64,
             }
