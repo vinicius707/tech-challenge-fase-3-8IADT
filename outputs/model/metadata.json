@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "created_at": "2026-05-12T01:13:45Z",
+  "created_at": "2026-05-12T12:39:15Z",
   "mode": "dry_run",
   "purpose": "Ajuste de formato/linguagem em portugues clinico para os quatro fluxos de saude da mulher (triagem, violencia, obstetrico, prevencao). Nao deve ser usado como unica fonte de raciocinio clinico.",
   "base_model": {
@@ -47,8 +47,8 @@
     ],
     "train": {
       "path": "data/train.jsonl",
-      "examples": 4,
-      "sha256": "7907f8fbd0475cfcc568171d317f2736d57f799827e179a62368e5a3f07f85b6",
+      "examples": 2231,
+      "sha256": "f20844a025b7b0ac9489bf9330f7cca32520165f59a27f985ae74aad65ab2b3f",
       "domains": [
         "obstetrico",
         "prevencao",
@@ -58,8 +58,8 @@
     },
     "val": {
       "path": "data/val.jsonl",
-      "examples": 4,
-      "sha256": "15e7c49457fa3dbba853e33f5be1365c8be4cdb7d8d8d2fda5b367a582930df3",
+      "examples": 557,
+      "sha256": "3e8bd045e666517e42ad9392e17e19eba69eec487a9abe556933e128a52f2fc9",
       "domains": [
         "obstetrico",
         "prevencao",

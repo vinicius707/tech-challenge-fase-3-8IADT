@@ -419,6 +419,8 @@ def run_training(
     lora: LoraConfig,
     training: TrainingConfig,
     device: str | None = None,
+    max_train_samples: int | None = None,
+    max_val_samples: int | None = None,
 ) -> dict[str, Any]:
     """Roda LoRA usando Transformers + PEFT + TRL.
 
@@ -499,6 +501,14 @@ def run_training(
 
     data_files = {"train": str(train_path), "validation": str(val_path)}
     dataset = load_dataset("json", data_files=data_files)
+    if max_train_samples is not None:
+        dataset["train"] = dataset["train"].select(
+            range(min(max_train_samples, len(dataset["train"])))
+        )
+    if max_val_samples is not None:
+        dataset["validation"] = dataset["validation"].select(
+            range(min(max_val_samples, len(dataset["validation"])))
+        )
 
     sft_kwargs = _training_kwargs_for_device(active_device, training)
     sft_config = SFTConfig(
@@ -615,6 +625,36 @@ def _build_parser() -> argparse.ArgumentParser:
         default=float(os.environ.get("FT_LR", "2e-4")),
     )
     parser.add_argument(
+        "--max-seq-length",
+        type=int,
+        default=int(os.environ.get("FT_MAX_SEQ", "1024")),
+        help="Tamanho maximo de sequencia (truncamento). Padrao 1024.",
+    )
+    parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=int(os.environ.get("FT_GRAD_ACCUM", "8")),
+        help="Passos de acumulacao de gradiente. Reduza para acelerar em MPS.",
+    )
+    parser.add_argument(
+        "--per-device-batch-size",
+        type=int,
+        default=int(os.environ.get("FT_BATCH_SIZE", "1")),
+        help="Batch size por device. Em M4 24-32GB, 1 e o seguro.",
+    )
+    parser.add_argument(
+        "--max-train-samples",
+        type=int,
+        default=None,
+        help="Sub-amostra do split de treino (uso: smoke runs). Padrao: tudo.",
+    )
+    parser.add_argument(
+        "--max-val-samples",
+        type=int,
+        default=None,
+        help="Sub-amostra do split de validacao (uso: smoke runs).",
+    )
+    parser.add_argument(
         "--device",
         choices=("cuda", "mps", "cpu"),
         default=None,
@@ -643,6 +683,9 @@ def main(argv: list[str] | None = None) -> int:
     training = TrainingConfig(
         epochs=args.epochs,
         learning_rate=args.learning_rate,
+        max_seq_length=args.max_seq_length,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        per_device_train_batch_size=args.per_device_batch_size,
     )
 
     results = run_training(
@@ -653,6 +696,8 @@ def main(argv: list[str] | None = None) -> int:
         lora=lora,
         training=training,
         device=args.device,
+        max_train_samples=args.max_train_samples,
+        max_val_samples=args.max_val_samples,
     )
 
     artifacts_local = _collect_local_artifacts(args.output_dir)
