@@ -5,8 +5,15 @@
   --text: #0f172a;
   /* Contraste ≥4.5:1 sobre --bg (Lighthouse color-contrast) */
   --muted: #334155;
-  --primary: #0d9488;
+  --primary: #0f766e;
+  --primary-soft: #f0fdfa;
+  --primary-soft-hover: #ccfbf1;
+  --primary-border: #5eead4;
+  --on-primary: #ffffff;
   --warn: #b45309;
+  --kpi-blue: #1d4ed8;
+  --kpi-red: #b91c1c;
+  --kpi-yellow: #b45309;
   --border: #e2e8f0;
   --error-text: #b91c1c;
   --error-bg: #fef2f2;
@@ -348,7 +355,7 @@ button.btn {
   font-weight: 600;
   cursor: pointer;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
@@ -418,13 +425,13 @@ button.btnSecondary:hover:not(:disabled) {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--primary);
-  background: #f0fdfa;
+  background: var(--primary-soft);
   text-decoration: none;
 }
 
 .pillLink:hover {
   border-color: var(--primary);
-  background: #ccfbf1;
+  background: var(--primary-soft-hover);
 }
 
 .logLine {
@@ -462,7 +469,7 @@ button.btnSecondary:hover:not(:disabled) {
 .kpi {
   border-radius: 14px;
   padding: 1rem;
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .kpiValue {
@@ -472,26 +479,31 @@ button.btnSecondary:hover:not(:disabled) {
 }
 
 .kpiLabel {
-  opacity: 0.95;
   margin-top: 0.25rem;
+  color: var(--on-primary);
+  font-weight: 600;
 }
 
 .kpiBlue {
-  background: #2563eb;
+  background: var(--kpi-blue);
 }
 
 .kpiRed {
-  background: #dc2626;
+  background: var(--kpi-red);
 }
 
 .kpiYellow {
-  background: #d97706;
+  background: var(--kpi-yellow);
 }
 
 .tableWrap {
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
+}
+
+.tableWrap--spaced {
+  margin-top: 0.75rem;
 }
 
 .table {
@@ -536,6 +548,14 @@ button.btnSecondary:hover:not(:disabled) {
   align-items: center;
 }
 
+.flowChips {
+  margin-bottom: 0.75rem;
+}
+
+.gateActionRow {
+  margin-top: 0.5rem;
+}
+
 .filtroChip {
   border: 2px solid var(--border);
   border-radius: var(--radius-chip);
@@ -563,9 +583,9 @@ button.btnSecondary:hover:not(:disabled) {
 }
 
 .filtroChip--medico {
-  border-color: #5eead4;
+  border-color: var(--primary-border);
   color: #0f766e;
-  background: linear-gradient(180deg, #f0fdfa 0%, #fff 100%);
+  background: linear-gradient(180deg, var(--primary-soft) 0%, #fff 100%);
 }
 
 .filtroChip--fora_escopo {
@@ -594,31 +614,31 @@ button.btnSecondary:hover:not(:disabled) {
 }
 
 .filtroChip--active.filtroChip--medico {
-  background: #0d9488;
-  color: #fff;
+  background: var(--primary);
+  color: var(--on-primary);
   border-color: #0f766e;
-  box-shadow: 0 2px 10px rgba(13, 148, 136, 0.35);
+  box-shadow: 0 2px 10px rgba(15, 118, 110, 0.35);
 }
 
 .filtroChip--active.filtroChip--fora_escopo {
-  background: #6d28d9;
-  color: #fff;
+  background: #5b21b6;
+  color: var(--on-primary);
   border-color: #5b21b6;
-  box-shadow: 0 2px 10px rgba(109, 40, 217, 0.3);
+  box-shadow: 0 2px 10px rgba(91, 33, 182, 0.3);
 }
 
 .filtroChip--active.filtroChip--emergencia {
-  background: #dc2626;
-  color: #fff;
+  background: #b91c1c;
+  color: var(--on-primary);
   border-color: #b91c1c;
-  box-shadow: 0 2px 12px rgba(220, 38, 38, 0.35);
+  box-shadow: 0 2px 12px rgba(185, 28, 28, 0.35);
 }
 
 .filtroChip--active.filtroChip--bloqueado {
-  background: #d97706;
-  color: #fff;
+  background: var(--warn);
+  color: var(--on-primary);
   border-color: #b45309;
-  box-shadow: 0 2px 10px rgba(217, 119, 6, 0.35);
+  box-shadow: 0 2px 10px rgba(180, 83, 9, 0.35);
 }
 
 .filtroEmergOnly {
@@ -775,6 +795,20 @@ tr.gravRow--critico td:first-child {
 .detailPanel {
   position: sticky;
   top: 1rem;
+}
+
+.paginationRow {
+  justify-content: space-between;
+}
+
+.detailQuestion {
+  margin-top: 0;
+}
+
+.detailMetaRow {
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .codeBlock {

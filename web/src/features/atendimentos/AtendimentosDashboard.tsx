@@ -203,7 +203,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
               </p>
             ) : null}
 
-            <div className="tableWrap" style={{ marginTop: "0.75rem" }}>
+            <div className="tableWrap tableWrap--spaced">
               <table className="table" role="table">
                 <thead>
                   <tr>
@@ -243,7 +243,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
               </table>
             </div>
 
-            <div className="btnRow row" style={{ justifyContent: "space-between" }}>
+            <div className="btnRow row paginationRow">
               <button
                 className="btnSecondary"
                 type="button"
@@ -266,7 +266,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
             </div>
           </div>
 
-          <aside className="card detailPanel" aria-label="Detalhe da interação">
+          <div className="card detailPanel" role="region" aria-label="Detalhe da interação">
             {!selectedId ? (
               <p className="muted">Selecione uma linha para ver detalhes.</p>
             ) : detailBusy ? (
@@ -276,10 +276,10 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
             ) : (
               <>
                 <h2 className="cardTitle">Detalhe</h2>
-                <p className="muted" style={{ marginTop: 0 }}>
+                <p className="muted detailQuestion">
                   <strong>Pergunta:</strong> {detail.perguntaText}
                 </p>
-                <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                <div className="row detailMetaRow">
                   <span
                     className={gravidadePillClass(detailGravNivel ?? "rotina")}
                     title={gravidadeTitulo(detailGravNivel ?? "rotina")}
@@ -315,7 +315,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                 </pre>
               </>
             )}
-          </aside>
+          </div>
         </section>
       </div>
     </div>

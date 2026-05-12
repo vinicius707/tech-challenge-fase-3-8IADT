@@ -419,10 +419,9 @@ export function AssistantExperience({
             Fluxo LangGraph (FE-INT-02)
           </p>
           <div
-            className="filtroChips"
+            className="filtroChips flowChips"
             role="radiogroup"
             aria-labelledby="flowLabel"
-            style={{ marginBottom: "0.75rem" }}
           >
             {(Object.keys(FLOW_LABELS) as ClinicalFlowId[]).map((id) => (
               <button
@@ -446,7 +445,7 @@ export function AssistantExperience({
             <div className="callout callout--alert">
               <strong>Gate de identidade (FE-SEC-01 / RF-SEC-02):</strong> confirme que representa
               um <strong>profissional autorizado</strong> neste ambiente de demonstração.
-              <div className="btnRow row" style={{ marginTop: "0.5rem" }}>
+              <div className="btnRow row gateActionRow">
                 <button
                   type="button"
                   className={professionalVerified ? "btn" : "filtroChip filtroChip--emergencia"}
@@ -459,14 +458,21 @@ export function AssistantExperience({
             </div>
           ) : null}
 
-          <h3 className="sectionLabel sectionLabel--block">Contexto da paciente (opcional)</h3>
-          <p className="muted">JSON livre — sem PII real (FE-INT-03 / RF-LC-03).</p>
+          <h3 id="patientContextLabel" className="sectionLabel sectionLabel--block">
+            Contexto da paciente (opcional)
+          </h3>
+          <p id="patientContextHelp" className="muted">
+            JSON livre — sem PII real (FE-INT-03 / RF-LC-03).
+          </p>
           <textarea
+            id="patientContext"
             className="input"
             value={patientContextText}
             onChange={(e) => setPatientContextText(e.target.value)}
             disabled={busy}
             spellCheck={false}
+            aria-labelledby="patientContextLabel"
+            aria-describedby="patientContextHelp"
           />
 
           <h3 className="sectionLabel sectionLabel--block">Explainability (FE-UI-01 / RF-SEC-04)</h3>
