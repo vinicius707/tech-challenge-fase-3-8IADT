@@ -89,6 +89,12 @@ class LoraConfig:
 
 @dataclass(frozen=True)
 class TrainingConfig:
+    """Hiperparametros do SFTTrainer.
+
+    `optim` e `bf16` sao resolvidos no runtime conforme o device (cuda/mps/cpu)
+    via `_training_kwargs_for_device`. Os defaults aqui valem para CUDA.
+    """
+
     epochs: int = 2
     per_device_train_batch_size: int = 1
     gradient_accumulation_steps: int = 8
@@ -205,15 +211,89 @@ def _now_iso() -> str:
 def _environment_info() -> dict[str, str]:
     """Informacoes minimas e nao sensiveis para auditoria do treino."""
 
-    return {
+    info = {
         "python": platform.python_version(),
         "platform": f"{platform.system()} {platform.release()}",
+        "machine": platform.machine(),
     }
+    info["device"] = detect_device()
+    return info
+
+
+def detect_device() -> str:
+    """Detecta o melhor device disponivel: `cuda` > `mps` > `cpu`.
+
+    Faz import preguicoso para nao falhar quando `torch` nao esta
+    instalado (modo dry-run nao exige torch).
+    """
+
+    try:
+        import torch  # type: ignore[import-not-found]
+    except ImportError:
+        return "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available() and mps.is_built():
+        return "mps"
+    return "cpu"
+
+
+def _training_kwargs_for_device(device: str, training: TrainingConfig) -> dict[str, Any]:
+    """Materializa argumentos do SFTConfig adequados ao device disponivel.
+
+    - CUDA: `paged_adamw_8bit` + bf16 + carga 4-bit via bitsandbytes.
+    - MPS (Apple Silicon): `adamw_torch` + bf16, **sem** 4-bit (bnb nao suporta MPS).
+    - CPU: ultimo recurso para smoke; `adamw_torch` + fp32 (lento).
+    """
+
+    kwargs: dict[str, Any] = {
+        "num_train_epochs": training.epochs,
+        "per_device_train_batch_size": training.per_device_train_batch_size,
+        "gradient_accumulation_steps": training.gradient_accumulation_steps,
+        "learning_rate": training.learning_rate,
+        "warmup_ratio": training.warmup_ratio,
+        "lr_scheduler_type": training.lr_scheduler_type,
+        "max_seq_length": training.max_seq_length,
+        "seed": training.seed,
+        "report_to": [],
+    }
+    if device == "cuda":
+        kwargs["optim"] = "paged_adamw_8bit"
+        kwargs["bf16"] = training.bf16
+    elif device == "mps":
+        kwargs["optim"] = "adamw_torch"
+        kwargs["bf16"] = training.bf16
+    else:
+        kwargs["optim"] = "adamw_torch"
+        kwargs["bf16"] = False
+    return kwargs
 
 
 # ---------------------------------------------------------------------------
 # Metadata builder (usado pelo dry-run e pelo treino real)
 # ---------------------------------------------------------------------------
+
+
+def _training_dict(training: TrainingConfig, device: str) -> dict[str, Any]:
+    """Serializa `TrainingConfig` resolvendo `optim`/`bf16` segundo o device.
+
+    Em dry-run isso garante que o metadata refletira o que o treino real
+    fara naquele hardware (CUDA paged_adamw_8bit, MPS/CPU adamw_torch).
+    """
+
+    base = asdict(training)
+    if device == "cuda":
+        base["optim"] = "paged_adamw_8bit"
+        base["bf16"] = training.bf16
+    elif device == "mps":
+        base["optim"] = "adamw_torch"
+        base["bf16"] = training.bf16
+    else:
+        base["optim"] = "adamw_torch"
+        base["bf16"] = False
+    base["device_target"] = device
+    return base
 
 
 def build_metadata(
@@ -228,6 +308,7 @@ def build_metadata(
     artifacts_external: ArtifactsExternal | None = None,
     training_results: dict[str, Any] | None = None,
     notes_extra: list[str] | None = None,
+    device: str | None = None,
 ) -> dict[str, Any]:
     """Compoe o dicionario serializado em `outputs/model/metadata.json`.
 
@@ -243,6 +324,10 @@ def build_metadata(
     if notes_extra:
         notes.extend(notes_extra)
 
+    active_device = device or detect_device()
+    training_block = _training_dict(training, active_device)
+    training_block["results"] = training_results
+
     return {
         "schema_version": SCHEMA_VERSION,
         "created_at": _now_iso(),
@@ -257,9 +342,7 @@ def build_metadata(
             "license": "Consulte o card do modelo no Hugging Face Hub.",
         },
         "lora_config": asdict(lora) | {"target_modules": list(lora.target_modules)},
-        "training": asdict(training) | (
-            {"results": training_results} if training_results else {"results": None}
-        ),
+        "training": training_block,
         "dataset": {
             "source": DATASET_SOURCE,
             "kaggle_slug": "pythonafroz/medquad-medical-question-answer-for-ai-research",
@@ -335,50 +418,74 @@ def run_training(
     output_dir: Path,
     lora: LoraConfig,
     training: TrainingConfig,
+    device: str | None = None,
 ) -> dict[str, Any]:
-    """Roda LoRA/QLoRA usando Transformers + PEFT + TRL.
+    """Roda LoRA usando Transformers + PEFT + TRL.
 
-    Lazy import evita custo de carregar torch no `--dry-run`. O fluxo
-    aqui segue a receita canonica recomendada no Colab (`docs/fine-tuning.md`):
-    bnb 4-bit + LoRA via PEFT + SFTTrainer + save_pretrained.
+    `device` e detectado automaticamente quando nao informado:
+
+    - `cuda` -> bnb 4-bit + `paged_adamw_8bit` + bf16 (Colab / GPU NVIDIA).
+    - `mps`  -> bf16 puro + `adamw_torch` (Apple Silicon; bnb nao suporta).
+    - `cpu`  -> fp32 + `adamw_torch` (smoke; muito lento).
+
+    Lazy import evita custo de carregar torch no `--dry-run`.
     """
 
     try:
-        import torch  # noqa: F401
+        import torch  # type: ignore[import-not-found]
         from datasets import load_dataset  # type: ignore[import-not-found]
         from peft import LoraConfig as PeftLoraConfig  # type: ignore[import-not-found]
         from peft import get_peft_model  # type: ignore[import-not-found]
         from transformers import (  # type: ignore[import-not-found]
             AutoModelForCausalLM,
             AutoTokenizer,
-            BitsAndBytesConfig,
         )
         from trl import SFTConfig, SFTTrainer  # type: ignore[import-not-found]
     except ImportError as exc:
         raise SystemExit(
             "Dependencias de fine-tuning ausentes. Instale com "
-            "`pip install -r requirements-finetuning.txt` (precisa de GPU) ou rode "
+            "`pip install -r requirements-finetuning.txt` ou rode "
             "`python fase2_finetuning/train_lora.py --dry-run` para validar o pipeline."
         ) from exc
 
+    active_device = device or detect_device()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype="bfloat16",
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-    )
+    if active_device == "mps":
+        os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+        os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
     tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        base_model,
-        quantization_config=bnb_config,
-        device_map="auto",
-    )
+    model_kwargs: dict[str, Any] = {}
+    if active_device == "cuda":
+        try:
+            from transformers import BitsAndBytesConfig  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover - CUDA path
+            raise SystemExit(
+                "Dependencia `bitsandbytes` ausente. Instale "
+                "`requirements-finetuning.txt` em ambiente CUDA."
+            ) from exc
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+        )
+        model_kwargs["quantization_config"] = bnb_config
+        model_kwargs["device_map"] = "auto"
+    elif active_device == "mps":
+        model_kwargs["torch_dtype"] = torch.bfloat16
+    else:
+        model_kwargs["torch_dtype"] = torch.float32
+
+    model = AutoModelForCausalLM.from_pretrained(base_model, **model_kwargs)
+    if active_device == "mps":
+        model.to("mps")
+    elif active_device == "cpu":
+        model.to("cpu")
 
     peft_config = PeftLoraConfig(
         r=lora.r,
@@ -393,22 +500,13 @@ def run_training(
     data_files = {"train": str(train_path), "validation": str(val_path)}
     dataset = load_dataset("json", data_files=data_files)
 
+    sft_kwargs = _training_kwargs_for_device(active_device, training)
     sft_config = SFTConfig(
         output_dir=str(output_dir),
-        num_train_epochs=training.epochs,
-        per_device_train_batch_size=training.per_device_train_batch_size,
-        gradient_accumulation_steps=training.gradient_accumulation_steps,
-        learning_rate=training.learning_rate,
-        warmup_ratio=training.warmup_ratio,
-        lr_scheduler_type=training.lr_scheduler_type,
-        optim=training.optim,
-        bf16=training.bf16,
-        max_seq_length=training.max_seq_length,
         eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=1,
-        seed=training.seed,
-        report_to=[],
+        **sft_kwargs,
     )
 
     trainer = SFTTrainer(
@@ -426,6 +524,7 @@ def run_training(
     tokenizer.save_pretrained(str(output_dir))
 
     return {
+        "device": active_device,
         "train_loss": float(getattr(train_metrics, "training_loss", 0.0) or 0.0),
         "eval_loss": float(eval_metrics.get("eval_loss", 0.0) or 0.0),
         "eval_runtime_s": float(eval_metrics.get("eval_runtime", 0.0) or 0.0),
@@ -515,6 +614,12 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=float(os.environ.get("FT_LR", "2e-4")),
     )
+    parser.add_argument(
+        "--device",
+        choices=("cuda", "mps", "cpu"),
+        default=None,
+        help="Forca o device. Sem o flag, detecta automaticamente.",
+    )
     return parser
 
 
@@ -547,6 +652,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=args.output_dir,
         lora=lora,
         training=training,
+        device=args.device,
     )
 
     artifacts_local = _collect_local_artifacts(args.output_dir)
@@ -560,6 +666,7 @@ def main(argv: list[str] | None = None) -> int:
         artifacts_local=artifacts_local,
         artifacts_external=ArtifactsExternal(),
         training_results=results,
+        device=results.get("device") if isinstance(results, dict) else None,
     )
 
     args.metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -581,6 +688,7 @@ __all__ = [
     "TrainingConfig",
     "DatasetSplit",
     "build_metadata",
+    "detect_device",
     "run_dry",
     "run_training",
     "main",

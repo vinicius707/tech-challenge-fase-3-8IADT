@@ -59,6 +59,25 @@ def test_run_dry_creates_metadata(tmp_path: Path) -> None:
     assert metadata["dataset"]["val"]["sha256"]
     assert metadata["lora_config"]["r"] == 16
     assert metadata["artifacts"]["external"]["preferred_channel"] == "huggingface_hub"
+    assert metadata["training"]["device_target"] in {"cuda", "mps", "cpu"}
+    assert metadata["environment"]["device"] in {"cuda", "mps", "cpu"}
+
+
+def test_training_dict_optim_resolves_per_device() -> None:
+    cfg = train_lora.TrainingConfig()
+    cuda_block = train_lora._training_dict(cfg, "cuda")
+    mps_block = train_lora._training_dict(cfg, "mps")
+    cpu_block = train_lora._training_dict(cfg, "cpu")
+    assert cuda_block["optim"] == "paged_adamw_8bit"
+    assert cuda_block["bf16"] is True
+    assert mps_block["optim"] == "adamw_torch"
+    assert mps_block["bf16"] is True
+    assert cpu_block["optim"] == "adamw_torch"
+    assert cpu_block["bf16"] is False
+
+
+def test_detect_device_returns_known_value() -> None:
+    assert train_lora.detect_device() in {"cuda", "mps", "cpu"}
 
 
 def test_validate_accepts_dry_run_metadata(tmp_path: Path) -> None:

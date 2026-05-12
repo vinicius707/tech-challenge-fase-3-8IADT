@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "created_at": "2026-05-12T01:02:15Z",
+  "created_at": "2026-05-12T01:13:45Z",
   "mode": "dry_run",
   "purpose": "Ajuste de formato/linguagem em portugues clinico para os quatro fluxos de saude da mulher (triagem, violencia, obstetrico, prevencao). Nao deve ser usado como unica fonte de raciocinio clinico.",
   "base_model": {
@@ -28,10 +28,11 @@
     "max_seq_length": 1024,
     "warmup_ratio": 0.05,
     "lr_scheduler_type": "cosine",
-    "optim": "paged_adamw_8bit",
-    "bf16": true,
+    "optim": "adamw_torch",
+    "bf16": false,
     "seed": 42,
     "framework": "trl.SFTTrainer",
+    "device_target": "cpu",
     "results": null
   },
   "dataset": {
@@ -80,7 +81,9 @@
   },
   "environment": {
     "python": "3.12.13",
-    "platform": "Darwin 25.3.0"
+    "platform": "Darwin 25.3.0",
+    "machine": "arm64",
+    "device": "cpu"
   },
   "notes": [
     "Fine-tuning trata formato/linguagem - NAO substitui RAG nem guardrails.",
