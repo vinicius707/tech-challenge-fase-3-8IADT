@@ -1,0 +1,174 @@
+# Regras de safety da Fase E (IA-E1 a IA-E5).
+# Atende docs/sdd/ia-core/spec.md IA-SAFE-01, IA-SAFE-02 e IA-EXP-01
+# e a secao 10 (Safety design) do docs/sdd/ia-core/design.md.
+#
+# Filosofia:
+# - Safety e fluxo nao podem depender exclusivamente do LLM.
+# - As regras sao declarativas: o codigo apenas compila os padroes e aplica
+#   a acao prescrita aqui. Para evoluir o comportamento clinico edita-se
+#   este arquivo, sem mexer no Python.
+# - Cada regra produz `safety_flags` que viajam pelo trace, pela auditoria
+#   e pelo evento SSE `meta`/`explain`.
+
+version: "1.0"
+
+defaults:
+  block_prescription: true
+  block_definitive_diagnosis: true
+  require_human_review_on_block: true
+  default_disclaimer: >-
+    Esta orientacao tem natureza informativa. A condulta final deve ser
+    validada por profissional de saude habilitado.
+
+# Comportamentos extras especificos por fluxo clinico.
+flow_overrides:
+  triagemGinecologica:
+    default_safety_flags: []
+  violenciaDomestica:
+    # Para violencia domestica, conteudo textual nao vai ao log em claro.
+    redact_sensitive_text: true
+    default_safety_flags: [sensitive, human_review_required]
+  obstetrico:
+    default_safety_flags: []
+  prevencao:
+    default_safety_flags: []
+
+rules:
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-01: bloquear pedidos de prescricao medicamentosa
+  # ---------------------------------------------------------------------------
+  - id: prescription_request
+    category: prescription
+    severity: high
+    applies_to: input_and_output
+    action: block_with_human_review
+    safety_flags: [prescription_blocked, human_review_required]
+    replacement: >-
+      Nao posso indicar prescricao, dose ou medicamento especifico. Por favor,
+      procure uma profissional de saude para avaliacao individual.
+    patterns:
+      - "(?i)\\bprescre[vc]"
+      - "(?i)\\bme receit"
+      - "(?i)qual ?(a )?dose"
+      - "(?i)quantos? (mg|comprimid|gota)"
+      - "(?i)que (rem[eé]di|medicament|antibi[oó]tic|p[ií]lula|anticoncep)"
+      - "(?i)posso tomar (\\w+)"
+      - "(?i)\\bdosa(gem|ge)\\b"
+
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-01: bloquear diagnostico definitivo
+  # ---------------------------------------------------------------------------
+  - id: definitive_diagnosis
+    category: diagnosis
+    severity: high
+    applies_to: output
+    action: rewrite_with_uncertainty
+    safety_flags: [definitive_diagnosis_blocked, human_review_required]
+    replacement: >-
+      Os sinais descritos sugerem hipoteses que precisam de avaliacao clinica
+      presencial. Nao e possivel confirmar diagnostico apenas com este relato.
+    patterns:
+      - "(?i)voc[eê] (tem|est[aá] com) certamente"
+      - "(?i)diagn[oó]stico (e|é|definit[ií]v[oa])"
+      - "(?i)voc[eê] (tem|est[aá] com) c[aâ]ncer"
+      - "(?i)voc[eê] (tem|est[aá] com) (uma )?infec[cç][aã]o (confirmad|definit)"
+      - "(?i)voc[eê] (tem|est[aá] com) endometriose confirmad"
+      - "(?i)\\b[eé] (com certeza|definitivamente)\\b"
+
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-02: escalar autoagressao / ideacao suicida
+  # ---------------------------------------------------------------------------
+  - id: self_harm
+    category: self_harm
+    severity: critical
+    applies_to: input
+    action: crisis_escalation
+    safety_flags: [self_harm_escalation, human_review_required, sensitive]
+    replacement: >-
+      Sentimos muito que voce esteja passando por isso. Voce nao esta sozinha.
+      Voce pode ligar agora para o CVV no numero 188 (24h, sigiloso e gratuito)
+      ou procurar uma unidade de saude. Em emergencia, ligue 192 (SAMU).
+    escalation:
+      channels: ["CVV 188", "SAMU 192"]
+      message: "Encaminhamento prioritario para CVV/SAMU"
+    patterns:
+      - "(?i)quero (me )?matar"
+      - "(?i)vou me machucar"
+      - "(?i)\\bme suicidar\\b"
+      - "(?i)pens(o|ei|ar) em (me )?suicidar"
+      - "(?i)acabar com a minha vida"
+      - "(?i)n[aã]o quero (mais )?viver"
+      - "(?i)tirar a minha vida"
+
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-02: protocolo violencia domestica
+  # ---------------------------------------------------------------------------
+  - id: domestic_violence
+    category: violence
+    severity: critical
+    applies_to: input
+    action: violence_protocol
+    safety_flags: [violence_protocol, human_review_required, sensitive]
+    replacement: >-
+      Lamento que voce esteja passando por isso. Em caso de risco imediato,
+      ligue para o 190 (Policia Militar). O Disque 180 funciona 24h para
+      orientacao e encaminhamento. Voce tambem pode procurar a Casa da
+      Mulher Brasileira ou uma unidade basica de saude.
+    escalation:
+      channels: ["Disque 180", "Policia 190", "Casa da Mulher Brasileira"]
+      message: "Encaminhamento prioritario para rede de protecao"
+    patterns:
+      - "(?i)(meu |o )?(marido|companheir\\w*|parceir\\w*|namorad\\w*|ex|pai|esposo) (me )?(bate|agride|amea[cç]a|empurr|esganou)"
+      - "(?i)apanho em casa"
+      - "(?i)viol[eê]ncia dom[eé]stica"
+      - "(?i)agress[aã]o do (parceir\\w*|marido|companheir\\w*)"
+      - "(?i)abuso sexual"
+      - "(?i)fui (estuprad|violentad|agredid)"
+      - "(?i)me obrigou a"
+
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-02: urgencia obstetrica / clinica
+  # ---------------------------------------------------------------------------
+  - id: obstetric_emergency
+    category: urgency
+    severity: critical
+    applies_to: input
+    action: urgency_escalation
+    safety_flags: [obstetric_emergency, urgent_referral, human_review_required]
+    replacement: >-
+      Os sinais relatados podem indicar urgencia. Procure imediatamente uma
+      maternidade ou pronto-socorro. Em emergencia, ligue 192 (SAMU).
+    escalation:
+      channels: ["SAMU 192", "Maternidade de referencia"]
+      message: "Encaminhamento urgente obstetrico"
+    patterns:
+      - "(?i)sangramento (intenso|abundante|com co[aá]gulo)"
+      - "(?i)n[aã]o sinto (mais )?(o )?beb[eê]"
+      - "(?i)bolsa rota"
+      - "(?i)contra[cç][aã]o (forte|seguida|de 5 ?em ?5)"
+      - "(?i)convuls[aã]o"
+      - "(?i)dor abdominal (forte|intensa) (na gravidez|gestante)"
+      - "(?i)press[aã]o (muito )?alta na gravidez"
+
+  # ---------------------------------------------------------------------------
+  # IA-SAFE-02: urgencia clinica generica (dor toracica, dispneia, etc.)
+  # ---------------------------------------------------------------------------
+  - id: clinical_emergency
+    category: urgency
+    severity: critical
+    applies_to: input
+    action: urgency_escalation
+    safety_flags: [clinical_emergency, urgent_referral, human_review_required]
+    replacement: >-
+      Os sintomas descritos podem indicar uma urgencia. Procure pronto
+      atendimento agora ou ligue 192 (SAMU).
+    escalation:
+      channels: ["SAMU 192"]
+      message: "Encaminhamento urgente clinico"
+    patterns:
+      - "(?i)dor no peito"
+      - "(?i)falta de ar (forte|intensa|grave)"
+      - "(?i)desmaiei"
+      - "(?i)perdi a consci[eê]ncia"
+      - "(?i)avc"
+      - "(?i)infarto"
