@@ -1,0 +1,44 @@
+# Configuracao dos backends de LLM da Fase D (IA-D1 a IA-D4).
+# Apenas metadados/env vars - nenhuma chave de API deve ficar versionada.
+#
+# Conforme docs/sdd/ia-core/design.md secao 8 e decisao D9:
+# o backend padrao da demo academica e o Ollama local. OpenAI-compatible
+# permanece como alternativa opcional via env vars.
+
+default_provider: ollama
+
+backends:
+  # IA-D3 (padrao da demo): Ollama/local exposto pela API OpenAI-compatible.
+  # `default_api_key` fica como string fixa porque o servidor Ollama exige
+  # um token nao vazio mas ignora seu valor.
+  ollama:
+    type: openai_compatible
+    api_key_env: OLLAMA_API_KEY
+    base_url_env: OLLAMA_BASE_URL
+    model_env: OLLAMA_MODEL
+    default_model: llama3.2:3b
+    default_base_url: http://127.0.0.1:11434/v1
+    default_api_key: ollama
+    timeout_seconds: 60
+
+  # IA-D1: backend deterministico para avaliacao local sem modelo real.
+  # Continua disponivel para CI, gates e fallback explicito.
+  stub_safe:
+    type: stub
+    model_version: stub-safe-0.1.0
+
+  # IA-D2 (opcional): provedores OpenAI-compatible (OpenAI, Azure OpenAI,
+  # Together, etc.). Selecione explicitamente via IA_LLM_BACKEND ou flag.
+  openai_compatible:
+    type: openai_compatible
+    api_key_env: OPENAI_API_KEY
+    base_url_env: OPENAI_BASE_URL
+    model_env: OPENAI_MODEL
+    default_model: gpt-4o-mini
+    timeout_seconds: 30
+
+  # IA-D4: placeholder para LoRA fine-tuned. A entrega de artefatos LoRA
+  # acontece na Fase H. Veja docs/llm-backends.md para carregamento.
+  local_lora:
+    type: placeholder
+    docs: docs/llm-backends.md#backend-local_lora

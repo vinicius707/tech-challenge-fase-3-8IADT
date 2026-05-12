@@ -22,3 +22,7 @@ O pacote `ia-core` foi criado a partir de `LACUNAS_IMPLEMENTACAO_TECH_CHALLENGE_
 ## Fonte de dados definida
 
 O corpus base do projeto sera o dataset Kaggle `pythonafroz/medquad-medical-question-answer-for-ai-research`, baixado via `kagglehub.dataset_download(...)`. Como o MedQuAD e um dataset medico geral, o pacote `ia-core` tambem especifica uma etapa obrigatoria de filtragem, normalizacao e enriquecimento para o recorte de saude da mulher exigido pelo desafio.
+
+## Backend LLM definido
+
+O backend LLM padrao da implementacao sera Ollama local, configurado por variaveis como `OLLAMA_BASE_URL` e `OLLAMA_MODEL`. O backend OpenAI-compatible permanece como opcional, mas nao deve ser requisito para a demo principal.

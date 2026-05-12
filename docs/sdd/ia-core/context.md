@@ -59,8 +59,9 @@ O resultado esperado e:
 | D4 | Criar quatro grafos LangGraph separados | Reduz risco de parecer grafo generico e melhora rastreabilidade. |
 | D5 | Usar dados sinteticos/publicos por padrao | Evita risco LGPD e acelera entrega academica. |
 | D6 | Persistir trace resumido, nao chain-of-thought | Gera auditabilidade sem expor raciocinio sensivel. |
-| D7 | Permitir LLM backend pluggable | OpenAI-compatible, Ollama/local e modelo fine-tuned podem compartilhar interface. |
+| D7 | Permitir LLM backend pluggable | Ollama/local, OpenAI-compatible e modelo fine-tuned podem compartilhar interface. |
 | D8 | Usar MedQuAD do Kaggle como corpus base | Dataset definido pela equipe; deve ser baixado via `kagglehub` e curado para saude da mulher. |
+| D9 | Usar Ollama local como backend LLM padrao | Reduz dependencia externa, custo e risco de chave API para a demo academica. |
 
 ## 6. Fora de escopo
 
@@ -78,6 +79,8 @@ O resultado esperado e:
 - O dataset base sera o Kaggle MedQuAD `pythonafroz/medquad-medical-question-answer-for-ai-research`.
 - O ambiente de desenvolvimento tera credenciais/permissao Kaggle quando necessario para `kagglehub.dataset_download`.
 - O MedQuAD e um corpus medico geral; portanto, nao substitui curadoria especifica de ginecologia, obstetricia, prevencao e violencia domestica.
+- A demo principal usara um modelo local simples via Ollama, selecionado por `OLLAMA_MODEL`.
+- O Ollama estara rodando localmente em `http://127.0.0.1:11434` ou URL equivalente configurada por `OLLAMA_BASE_URL`.
 - O fine-tuning pode ser executado em Colab e os artefatos podem ser documentados ou disponibilizados por instrucao se forem grandes demais para Git.
 - A UI atual sera reaproveitada.
 - O BFF atual continuara aceitando modo stub para fallback, mas o video deve demonstrar o modo proxy com Python.
@@ -89,6 +92,7 @@ O resultado esperado e:
 | Implementar apenas stub | Alto | Priorizar servico Python P0. |
 | Usar corpus generico demais | Alto | Filtrar MedQuAD por topicos relevantes e complementar com exemplos curados de saude da mulher. |
 | Fine-tuning atrasar por GPU | Medio | Preparar notebook Colab e fallback com artefatos/metadados. |
+| Modelo Ollama simples ter baixa qualidade clinica | Alto | Usar RAG, respostas curtas, guardrails deterministas e encaminhamento humano para casos sensiveis. |
 | LangGraph virar fluxo cosmetico | Alto | Implementar estados, transicoes, trace e testes por fluxo. |
 | Vazamento de conteudo sensivel | Alto | Redacao, logs minimizados e safety flags. |
 | Falta de relatorio final | Alto | Gerar relatorio como saida de `fase5_avaliacao/generate_report.py`. |
@@ -101,7 +105,7 @@ Antes de implementar:
 - Este pacote SDD deve estar revisado.
 - A equipe deve validar acesso ao Kaggle e registrar licenca/termos do dataset MedQuAD em `docs/dados-e-curadoria.md`.
 - A equipe deve escolher nome da pasta Python: recomendacao `ia-core/`.
-- A equipe deve confirmar se usara OpenAI-compatible API, Ollama ou ambos.
+- A equipe deve escolher o modelo Ollama inicial e registrar o valor recomendado de `OLLAMA_MODEL`.
 - A equipe deve confirmar se adaptadores LoRA serao versionados, anexados como release ou documentados por link.
 
 ## 10. Definition of Done
