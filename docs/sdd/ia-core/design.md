@@ -22,8 +22,8 @@ flowchart LR
   obstetric --> safety
   prevention --> safety
   safety --> llm[LLM Backend]
-  llm --> openai[OpenAI-compatible]
   llm --> ollama[Ollama/local]
+  llm --> openai[OpenAI-compatible opcional]
   llm --> tuned[Fine-tuned + LoRA]
   py --> audit[Audit/Trace JSON]
 ```
@@ -342,12 +342,41 @@ class LlmBackend:
 
 Backends:
 
-- `openai_compatible`
-- `ollama`
+- `ollama` como padrao para demo local
+- `openai_compatible` como opcional
 - `local_lora`
 - `stub_safe` para testes sem modelo
 
 Regra: safety e fluxo nao podem depender exclusivamente do LLM.
+
+Configuracao recomendada em `config/model_backends.yaml`:
+
+```yaml
+default_provider: ollama
+
+ollama:
+  base_url: ${OLLAMA_BASE_URL:-http://127.0.0.1:11434}
+  model: ${OLLAMA_MODEL:-llama3.2:3b}
+  temperature: 0.2
+  timeout_seconds: 60
+
+openai_compatible:
+  enabled: false
+  base_url: ${OPENAI_BASE_URL:-}
+  api_key_env: OPENAI_API_KEY
+  model: ${OPENAI_MODEL:-}
+
+stub_safe:
+  enabled_for_tests: true
+```
+
+Contrato esperado do backend Ollama:
+
+- Usar HTTP local em `OLLAMA_BASE_URL`.
+- Ler modelo de `OLLAMA_MODEL`, sem hardcode no codigo.
+- Expor `model_version` como `ollama:<modelo>`.
+- Aplicar timeout curto e erro explicativo quando o Ollama nao estiver rodando.
+- Manter `stub_safe` apenas para testes e fallback controlado, nunca como demo principal.
 
 ## 9. LangGraph design
 
@@ -503,10 +532,11 @@ Relatorio final deve conter:
 Passos:
 
 1. Rodar Python em `http://127.0.0.1:8000`.
-2. Configurar `web/.env.local` com `ORCHESTRATION_API_URL=http://127.0.0.1:8000`.
-3. Rodar `npm run dev` em `web/`.
-4. Enviar mensagem pela UI.
-5. Confirmar no painel de logs que `modelVersion` nao e `stub-0.1.0`.
+2. Garantir Ollama rodando em `OLLAMA_BASE_URL` e com o modelo definido em `OLLAMA_MODEL`.
+3. Configurar `web/.env.local` com `ORCHESTRATION_API_URL=http://127.0.0.1:8000`.
+4. Rodar `npm run dev` em `web/`.
+5. Enviar mensagem pela UI.
+6. Confirmar no painel de logs que `modelVersion` comeca com `ollama:` e nao e `stub-0.1.0`.
 
 Mudanca P1 recomendada no front:
 

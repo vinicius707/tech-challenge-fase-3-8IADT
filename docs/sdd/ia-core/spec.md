@@ -80,7 +80,7 @@ Como equipe, quero roteiro com comandos e cenas, para gravar demonstracao dentro
 | IA-RAG-01 | P0 | Indexar documentos | `outputs/vectorstore` e criado por script. |
 | IA-RAG-02 | P0 | Recuperar top-k com fonte | Consulta retorna fonte, score e trecho. |
 | IA-SVC-01 | P0 | Expor `POST /v1/chat/stream` | Endpoint retorna SSE compativel com `docs/api.md`. |
-| IA-SVC-02 | P0 | Suportar backend LLM pluggable | Interface unica para OpenAI-compatible, Ollama/local e fine-tuned. |
+| IA-SVC-02 | P0 | Suportar backend LLM pluggable com Ollama como padrao | Interface unica executa Ollama local por `OLLAMA_BASE_URL`/`OLLAMA_MODEL` e permite OpenAI-compatible como opcional. |
 | IA-LG-01 | P0 | Implementar grafo de triagem ginecologica | Executa estados e retorna trace. |
 | IA-LG-02 | P0 | Implementar grafo de violencia domestica | Executa com redacao/log minimo e encaminhamento humano. |
 | IA-LG-03 | P0 | Implementar grafo obstetrico | Detecta red flags e escalona urgencia. |
@@ -274,6 +274,7 @@ Critico: diferenciar rastreamento populacional, investigacao por sintoma e alto 
 - [ ] Quatro fluxos executam com trace.
 - [ ] Dataset MedQuAD baixado, normalizado, curado e validado.
 - [ ] Fine-tuning tem evidencia reproduzivel.
+- [ ] Backend Ollama local responde pela demo principal.
 - [ ] RAG retorna fonte real.
 - [ ] Safety tests passam.
 - [ ] Relatorio de avaliacao gerado.

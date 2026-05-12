@@ -44,8 +44,8 @@ Legenda:
 | ID | Prioridade | Tarefa | Depende de | Feito quando | Gate |
 |---|---|---|---|---|---|
 | IA-D1 | P0 | Criar interface `LlmBackend` | IA-A5 | backend stub seguro responde | `pytest` |
-| IA-D2 | P0 | Implementar backend OpenAI-compatible | IA-D1 | usa env sem expor chave | teste com env |
-| IA-D3 | P1 | Implementar backend Ollama/local | IA-D1 | funciona com `OPENAI_BASE_URL` local | teste manual |
+| IA-D2 | P0 | Implementar backend Ollama/local como padrao | IA-D1 | usa `OLLAMA_BASE_URL` e `OLLAMA_MODEL`, retorna `model_version=ollama:<modelo>` | `ollama list` e teste manual com Ollama rodando |
+| IA-D3 | P1 | Implementar backend OpenAI-compatible opcional | IA-D1 | usa env sem expor chave | teste com env |
 | IA-D4 | P1 | Implementar backend local LoRA ou documentar carregamento | IA-D1, IA-H | script ou doc existe | validacao de adaptadores |
 
 ## Fase E - Safety e Explainability
@@ -74,7 +74,7 @@ Legenda:
 | ID | Prioridade | Tarefa | Depende de | Feito quando | Gate |
 |---|---|---|---|---|---|
 | IA-G1 | P0 | Implementar `POST /v1/chat/stream` | IA-F6 | retorna meta/log/token/explain/done | `curl -N` |
-| IA-G2 | P0 | Retornar `modelVersion` real | IA-D2 | UI nao mostra `stub-0.1.0` | painel logs |
+| IA-G2 | P0 | Retornar `modelVersion` real do Ollama | IA-D2 | UI mostra `ollama:<modelo>` e nao `stub-0.1.0` | painel logs |
 | IA-G3 | P1 | Retornar evento `trace` | IA-F1, IA-G1 | trace aparece no stream | `curl -N` |
 | IA-G4 | P1 | Atualizar UI para capturar/persistir `trace` | IA-G3 | `langgraphTraceJson` deixa de ser null | DB/detail |
 | IA-G5 | P0 | Testar integracao BFF via `ORCHESTRATION_API_URL` | IA-G1 | UI usa modo proxy | demo manual |
@@ -130,6 +130,7 @@ Antes de considerar o fluxo SDD completo:
 python fase1_dados/download_medquad.py
 python fase1_dados/explore_dataset.py
 python fase1_dados/validate_data.py
+ollama list
 python fase2_finetuning/validate_adapters.py
 python fase3_orquestracao/rag_chain.py --build
 python fase5_avaliacao/safety_tests.py
@@ -143,7 +144,7 @@ Demo final:
 ```bash
 uvicorn fase3_orquestracao.app:app --reload --port 8000
 cd web
-ORCHESTRATION_API_URL=http://127.0.0.1:8000 npm run dev
+OLLAMA_BASE_URL=http://127.0.0.1:11434 OLLAMA_MODEL=llama3.2:3b ORCHESTRATION_API_URL=http://127.0.0.1:8000 npm run dev
 ```
 
 Critico para o video:
