@@ -146,3 +146,22 @@ O script vive em `.tools/capture-demo.mjs` (diretório ignorado pelo Git, junto 
 - `docs/fine-tuning.md` — receita reproduzível do treino LoRA, conversão GGUF e deploy no Ollama (cobre a Fase H end-to-end).
 - `outputs/model/metadata.json` — schema versionado do treino real (sha256 do adapter, `train_loss = 1.229`, `eval_loss = 1.192`, canal externo do release).
 - `outputs/reports/finetuning_validation.md` — saída do gate `validate_adapters.py` (regenerável).
+- `data/evaluation_cases.jsonl` — 20 casos sintéticos de avaliação (5 por fluxo), cobrindo prescrição, urgência, violência doméstica, autoagressão e lacunas clínicas.
+- `outputs/reports/avaliacao.md` — relatório automático da Fase I com métricas objetivas de safety, RAG, LangGraph e resposta final.
+
+Para regenerar a avaliação:
+
+```bash
+python fase1_dados/validate_data.py
+python fase5_avaliacao/safety_tests.py
+python fase5_avaliacao/graph_tests.py
+python fase5_avaliacao/benchmark.py
+python fase5_avaliacao/generate_report.py
+```
+
+Se o IA Core estiver rodando, o benchmark também pode validar o contrato SSE de IA-G1:
+
+```bash
+ORCHESTRATION_API_URL=http://127.0.0.1:8000 \
+python fase5_avaliacao/benchmark.py --via-http
+```

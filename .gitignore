@@ -34,6 +34,7 @@ data/raw/medquad/*
 !data/raw/medquad/.gitkeep
 data/processed/*.jsonl
 data/*.jsonl
+!data/evaluation_cases.jsonl
 outputs/vectorstore/*
 !outputs/vectorstore/.gitkeep
 outputs/model/*
@@ -44,5 +45,7 @@ outputs/dist/
 outputs/reports/*.md
 outputs/reports/*.json
 !outputs/reports/.gitkeep
+!outputs/reports/avaliacao.md
+!outputs/reports/benchmark_results.json
 logs/*.log
 !logs/.gitkeep

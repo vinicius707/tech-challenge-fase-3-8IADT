@@ -1,12 +1,10 @@
-"""Gate dos grafos LangGraph da Fase F.
+"""Gate dos grafos LangGraph (Fase F + avaliacao automatizada Fase I).
 
 Uso:
 
 ```bash
-python fase5_avaliacao/graph_tests.py --flow triagemGinecologica
-python fase5_avaliacao/graph_tests.py --flow violenciaDomestica
-python fase5_avaliacao/graph_tests.py --flow obstetrico
-python fase5_avaliacao/graph_tests.py --flow prevencao
+python fase5_avaliacao/graph_tests.py                         # todos os casos da Fase I
+python fase5_avaliacao/graph_tests.py --flow triagemGinecologica # filtro por fluxo
 ```
 """
 
@@ -17,12 +15,20 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from fase3_orquestracao.clinical_router import ClinicalGraphResult, available_flows, route_clinical_flow
+from fase5_avaliacao.evaluation_cases import (
+    EvaluationCase,
+    contains_all,
+    contains_any,
+    ensure_minimum_coverage,
+    group_by_flow,
+    load_evaluation_cases,
+)
 
 
 @dataclass(frozen=True)
@@ -41,12 +47,15 @@ class GraphCase:
 
 @dataclass
 class GraphCaseResult:
+    case_id: str
     flow_id: str
     passed: bool
     failures: list[str] = field(default_factory=list)
     trace_nodes: list[str] = field(default_factory=list)
     urgency: str | None = None
     safety_flags: list[str] = field(default_factory=list)
+    response_chars: int = 0
+    response: str = ""
 
 
 CASES: dict[str, GraphCase] = {
@@ -120,11 +129,6 @@ CASES: dict[str, GraphCase] = {
 }
 
 
-def _contains_all(haystack: str, needles: Iterable[str]) -> list[str]:
-    lower = haystack.lower()
-    return [needle for needle in needles if needle.lower() not in lower]
-
-
 def _assert_case(case: GraphCase, result: ClinicalGraphResult) -> GraphCaseResult:
     trace_nodes = [node.name for node in result.trace.nodes]
     flags = list(result.safety_flags)
@@ -140,7 +144,7 @@ def _assert_case(case: GraphCase, result: ClinicalGraphResult) -> GraphCaseResul
     missing_flags = [flag for flag in case.expected_flags if flag not in flags]
     if missing_flags:
         failures.append(f"flags ausentes: {missing_flags}; obtidas {flags}")
-    missing_response = _contains_all(result.response, case.response_must_include)
+    missing_response = contains_all(result.response, case.response_must_include)
     if missing_response:
         failures.append(f"resposta nao contem: {missing_response}")
     forbidden_response = [
@@ -160,12 +164,82 @@ def _assert_case(case: GraphCase, result: ClinicalGraphResult) -> GraphCaseResul
         failures.append("ExplainBlock sem lacunas")
 
     return GraphCaseResult(
+        case_id=case.flow_id,
         flow_id=case.flow_id,
         passed=not failures,
         failures=failures,
         trace_nodes=trace_nodes,
         urgency=result.urgency,
         safety_flags=flags,
+        response_chars=len(result.response),
+        response=result.response,
+    )
+
+
+def _expect_tuple(value: Any) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, list):
+        return tuple(str(item) for item in value)
+    return (str(value),)
+
+
+def _assert_evaluation_case(case: EvaluationCase, result: ClinicalGraphResult) -> GraphCaseResult:
+    graph = case.graph_expectations
+    response = case.response_expectations
+    trace_nodes = [node.name for node in result.trace.nodes]
+    flags = list(result.safety_flags)
+    failures: list[str] = []
+
+    min_nodes = int(graph.get("minNodes") or 1)
+    if len(trace_nodes) < min_nodes:
+        failures.append(f"trace curto: {len(trace_nodes)} < {min_nodes}")
+
+    required_nodes = _expect_tuple(graph.get("requiredNodes"))
+    missing_nodes = [node for node in required_nodes if node not in trace_nodes]
+    if missing_nodes:
+        failures.append(f"nos ausentes: {missing_nodes}")
+
+    expected_urgency = _expect_tuple(graph.get("expectedUrgency"))
+    if expected_urgency and result.urgency not in expected_urgency:
+        failures.append(f"urgencia inesperada: {result.urgency}; esperado {expected_urgency}")
+
+    required_flags = _expect_tuple(graph.get("requiredSafetyFlags"))
+    missing_flags = [flag for flag in required_flags if flag not in flags]
+    if missing_flags:
+        failures.append(f"flags ausentes: {missing_flags}; obtidas {flags}")
+
+    trace_text = json.dumps(result.trace.model_dump(), ensure_ascii=False).lower()
+    forbidden_trace = contains_any(trace_text, _expect_tuple(graph.get("traceMustNotInclude")))
+    if forbidden_trace:
+        failures.append(f"trace contem conteudo sensivel: {forbidden_trace}")
+
+    missing_response = contains_all(result.response, _expect_tuple(response.get("mustInclude")))
+    if missing_response:
+        failures.append(f"resposta nao contem: {missing_response}")
+    forbidden_response = contains_any(result.response, _expect_tuple(response.get("mustNotInclude")))
+    if forbidden_response:
+        failures.append(f"resposta contem termo proibido: {forbidden_response}")
+
+    if not result.response.strip():
+        failures.append("resposta final vazia")
+    if not result.explain.fonte:
+        failures.append("ExplainBlock sem fonte")
+    if not (0.0 <= result.explain.confianca <= 1.0):
+        failures.append(f"confianca fora de [0,1]: {result.explain.confianca}")
+    if not result.explain.lacunas:
+        failures.append("ExplainBlock sem lacunas")
+
+    return GraphCaseResult(
+        case_id=case.id,
+        flow_id=case.flow_id,
+        passed=not failures,
+        failures=failures,
+        trace_nodes=trace_nodes,
+        urgency=result.urgency,
+        safety_flags=flags,
+        response_chars=len(result.response),
+        response=result.response,
     )
 
 
@@ -182,24 +256,51 @@ def run_graph_case(flow_id: str) -> GraphCaseResult:
     return _assert_case(case, result)
 
 
+def run_evaluation_case(case: EvaluationCase) -> GraphCaseResult:
+    result = route_clinical_flow(
+        flow_id=case.flow_id,
+        message=case.message,
+        patient_context=case.patient_context,
+        model_version="stub-safe-0.1.0",
+    )
+    return _assert_evaluation_case(case, result)
+
+
+def run_evaluation_cases(flow_id: str | None = None) -> list[GraphCaseResult]:
+    cases = load_evaluation_cases()
+    ensure_minimum_coverage(cases, min_cases_per_flow=4)
+    if flow_id:
+        cases = [case for case in cases if case.flow_id == flow_id]
+    return [run_evaluation_case(case) for case in cases]
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Gate dos grafos LangGraph da Fase F.")
-    parser.add_argument("--flow", choices=available_flows(), required=True)
+    parser = argparse.ArgumentParser(description="Gate dos grafos LangGraph da Fase I.")
+    parser.add_argument("--flow", choices=available_flows(), required=False)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    result = run_graph_case(args.flow)
+    results = run_evaluation_cases(args.flow)
     if args.json:
-        print(json.dumps(result.__dict__, ensure_ascii=False, indent=2))
+        print(json.dumps([result.__dict__ for result in results], ensure_ascii=False, indent=2))
     else:
-        status = "PASS" if result.passed else "FAIL"
-        print(f"[{status}] {result.flow_id}")
-        print(f"  urgency: {result.urgency}")
-        print(f"  safety_flags: {result.safety_flags}")
-        print(f"  trace_nodes: {result.trace_nodes}")
-        for failure in result.failures:
-            print(f"  - {failure}")
-    return 0 if result.passed else 1
+        grouped = group_by_flow(load_evaluation_cases())
+        print(
+            "Cobertura de casos: "
+            + ", ".join(f"{flow}={len(cases)}" for flow, cases in grouped.items())
+        )
+        for result in results:
+            status = "PASS" if result.passed else "FAIL"
+            print(f"[{status}] {result.case_id} ({result.flow_id})")
+            print(f"  urgency: {result.urgency}")
+            print(f"  safety_flags: {result.safety_flags}")
+            print(f"  trace_nodes: {result.trace_nodes}")
+            for failure in result.failures:
+                print(f"  - {failure}")
+        passed = sum(1 for result in results if result.passed)
+        failed = len(results) - passed
+        print(f"\nResumo: {passed}/{len(results)} passaram, {failed} falharam.")
+    return 0 if all(result.passed for result in results) else 1
 
 
 if __name__ == "__main__":
