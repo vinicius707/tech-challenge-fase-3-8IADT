@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-05-12T01:02:15Z",
+  "mode": "dry_run",
+  "purpose": "Ajuste de formato/linguagem em portugues clinico para os quatro fluxos de saude da mulher (triagem, violencia, obstetrico, prevencao). Nao deve ser usado como unica fonte de raciocinio clinico.",
+  "base_model": {
+    "name": "meta-llama/Llama-3.2-3B-Instruct",
+    "license": "Consulte o card do modelo no Hugging Face Hub."
+  },
+  "lora_config": {
+    "r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "bias": "none",
+    "task_type": "CAUSAL_LM",
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj"
+    ]
+  },
+  "training": {
+    "epochs": 2,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.0002,
+    "max_seq_length": 1024,
+    "warmup_ratio": 0.05,
+    "lr_scheduler_type": "cosine",
+    "optim": "paged_adamw_8bit",
+    "bf16": true,
+    "seed": 42,
+    "framework": "trl.SFTTrainer",
+    "results": null
+  },
+  "dataset": {
+    "source": "MedQuAD (pythonafroz/medquad-medical-question-answer-for-ai-research) + complementos sinteticos curados (synthetic_protocol_v1)",
+    "kaggle_slug": "pythonafroz/medquad-medical-question-answer-for-ai-research",
+    "format": "openai-chat-messages",
+    "domains_required": [
+      "obstetrico",
+      "prevencao",
+      "triagemGinecologica",
+      "violenciaDomestica"
+    ],
+    "train": {
+      "path": "data/train.jsonl",
+      "examples": 4,
+      "sha256": "7907f8fbd0475cfcc568171d317f2736d57f799827e179a62368e5a3f07f85b6",
+      "domains": [
+        "obstetrico",
+        "prevencao",
+        "triagemGinecologica",
+        "violenciaDomestica"
+      ]
+    },
+    "val": {
+      "path": "data/val.jsonl",
+      "examples": 4,
+      "sha256": "15e7c49457fa3dbba853e33f5be1365c8be4cdb7d8d8d2fda5b367a582930df3",
+      "domains": [
+        "obstetrico",
+        "prevencao",
+        "triagemGinecologica",
+        "violenciaDomestica"
+      ]
+    }
+  },
+  "artifacts": {
+    "local": null,
+    "external": {
+      "preferred_channel": "huggingface_hub",
+      "huggingface_repo": "<org>/femcare-llama32-lora",
+      "github_release_asset": "https://github.com/<org>/<repo>/releases/download/v0.1.0-lora/adapter.zip",
+      "download_command": "huggingface-cli download <org>/femcare-llama32-lora --local-dir outputs/model",
+      "sha256": null,
+      "notes": "Pesos NAO sao versionados no Git. Veja docs/fine-tuning.md para o fluxo recomendado de release (HF Hub > GitHub Release > Git LFS)."
+    }
+  },
+  "environment": {
+    "python": "3.12.13",
+    "platform": "Darwin 25.3.0"
+  },
+  "notes": [
+    "Fine-tuning trata formato/linguagem - NAO substitui RAG nem guardrails.",
+    "Pesos pesados nao sao versionados no Git; veja docs/fine-tuning.md.",
+    "Para reproducao sem GPU use `python fase2_finetuning/train_lora.py --dry-run`."
+  ]
+}
