@@ -8,7 +8,7 @@ Interface do assistente clínico descrita em [.specs/features/web-ui/spec.md](..
 
 - Node.js 20+
 
-## Arranque local (clone → a correr)
+## Execução local (clone → rodando)
 
 Na pasta `web/`:
 
@@ -18,7 +18,7 @@ npm run setup:local
 npm run dev
 ```
 
-Abra `http://localhost:3000`. O ficheiro **`.env`** inclui um `AUTH_SECRET` só para demo local (o Next carrega `.env` em `dev` e `build`). Para valores próprios ou integração Python, use **`.env.local`** (sobrepõe `.env`; não é versionado).
+Abra `http://localhost:3000`. O arquivo **`.env`** inclui um `AUTH_SECRET` só para demo local (o Next carrega `.env` em `dev` e `build`). Para valores próprios ou integração Python, use **`.env.local`** (sobrescreve `.env`; não é versionado).
 
 ## Variáveis de ambiente
 
@@ -30,7 +30,7 @@ Abra `http://localhost:3000`. O ficheiro **`.env`** inclui um `AUTH_SECRET` só 
 | Variável | Descrição |
 |----------|-----------|
 | `AUTH_SECRET` | Segredo JWT (≥ 32 caracteres) para o cookie `mw_session`. |
-| `DATABASE_PATH` | Opcional: caminho do ficheiro SQLite (default `data/app.db` dentro de `web/`). |
+| `DATABASE_PATH` | Opcional: caminho do arquivo SQLite (default `data/app.db` dentro de `web/`). |
 | `ORCHESTRATION_API_URL` | Base URL do Python. Se vazio, o BFF usa **stub** SSE (demo local). |
 | `ORCHESTRATION_API_KEY` | Opcional: Bearer para o serviço Python. |
 | `NEXT_PUBLIC_SITE_URL` | Opcional: URL pública (ex.: `https://dominio.org`) para `metadataBase`, sitemap e robots. |
@@ -49,7 +49,7 @@ npm run db:seed
 Credenciais demo após seed:
 
 - Email: `demo@exemplo.org`
-- Palavra-passe: `demo12345`
+- Senha: `demo12345`
 
 ## Comandos
 

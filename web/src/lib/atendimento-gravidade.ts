@@ -1,6 +1,6 @@
 import type { AtendimentoFiltro, AtendimentoListItem } from "@/types/atendimento";
 
-/** Nível agregado para cor na UI (urgência + bloqueio + redação sensível). */
+/** Nível agregado para cor na UI (urgência + bloqueio + omissão sensível). */
 export type GravidadeNivel = "critico" | "alto" | "moderado" | "rotina";
 
 export function gravidadeFromItem(
@@ -20,7 +20,7 @@ export function gravidadeTitulo(nivel: GravidadeNivel): string {
     case "critico":
       return "Crítico — emergência ou bloqueado";
     case "alto":
-      return "Alto — urgência elevada ou conteúdo sensível redigido";
+      return "Alto — urgência elevada ou conteúdo sensível omitido";
     case "moderado":
       return "Moderado";
     default:
@@ -59,7 +59,7 @@ export function filtroChipTone(id: AtendimentoFiltro): string {
   return `filtroChip filtroChip--${id}`;
 }
 
-/** Urgência em mensagens do chat (sem bloqueio/redação). */
+/** Urgência em mensagens do chat (sem bloqueio/omissão sensível). */
 export function gravidadeFromUrgencia(urgencia?: string | null): GravidadeNivel {
   const u = (urgencia || "nenhuma").toLowerCase();
   if (u === "emergencia") return "critico";

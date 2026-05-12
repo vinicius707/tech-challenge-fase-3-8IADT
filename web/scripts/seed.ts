@@ -23,7 +23,7 @@ const tx = db.transaction(() => {
   db.prepare(
     `INSERT INTO users (id, email, name, password_hash, created_at)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, email, "Utilizador demo", hash, now);
+  ).run(id, email, "Usuário demo", hash, now);
   console.log("Seed: created", email, "/", password);
 });
 

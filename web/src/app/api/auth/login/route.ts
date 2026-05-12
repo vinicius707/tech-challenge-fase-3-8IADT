@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     const ok = row && bcrypt.compareSync(password, row.password_hash);
     if (!ok) {
-      return NextResponse.json({ error: "Email ou palavra-passe inválidos." }, { status: 401 });
+      return NextResponse.json({ error: "Email ou senha inválidos." }, { status: 401 });
     }
 
     const token = await signSessionToken({

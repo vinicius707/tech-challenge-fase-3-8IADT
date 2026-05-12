@@ -16,7 +16,7 @@ const AssistantExperience = dynamic(
   {
     loading: () => (
       <div className="appShell">
-        <p className="muted loadingHint">A carregar assistente…</p>
+        <p className="muted loadingHint">Carregando assistente…</p>
       </div>
     ),
     ssr: true,

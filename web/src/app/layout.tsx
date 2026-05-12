@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         <a href="#conteudo-principal" className="skipLink">
-          Saltar para o conteúdo principal
+          Pular para o conteúdo principal
         </a>
         <main id="conteudo-principal" tabIndex={-1}>
           {children}

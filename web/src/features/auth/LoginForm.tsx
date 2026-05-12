@@ -58,7 +58,7 @@ export function LoginForm() {
           disabled={busy}
         />
         <label className="sectionLabel sectionLabel--field muted" htmlFor="password">
-          Palavra-passe
+          Senha
         </label>
         <div className="passwordField">
           <input
@@ -76,7 +76,7 @@ export function LoginForm() {
             onClick={() => setShowPassword((v) => !v)}
             disabled={busy}
             aria-pressed={showPassword}
-            aria-label={showPassword ? "Ocultar palavra-passe" : "Mostrar palavra-passe"}
+            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             title={showPassword ? "Ocultar" : "Mostrar"}
           >
             {showPassword ? (
@@ -95,7 +95,7 @@ export function LoginForm() {
         {error ? <p role="alert" className="formAlert">{error}</p> : null}
         <div className="btnRow row">
           <button className="btn" type="submit" disabled={busy}>
-            {busy ? "A entrar…" : "Entrar"}
+            {busy ? "Entrando…" : "Entrar"}
           </button>
         </div>
       </form>

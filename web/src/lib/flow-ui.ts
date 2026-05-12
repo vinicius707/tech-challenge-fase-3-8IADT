@@ -1,6 +1,6 @@
 import type { ClinicalFlowId } from "@/types/assistant";
 
-/** Tons de chip alinhados aos filtros da auditoria (identidade visual partilhada). */
+/** Tons de chip alinhados aos filtros da auditoria (identidade visual compartilhada). */
 const FLOW_CHIP_TONE: Record<ClinicalFlowId, "medico" | "emergencia" | "bloqueado" | "fora_escopo"> = {
   triagemGinecologica: "medico",
   violenciaDomestica: "emergencia",

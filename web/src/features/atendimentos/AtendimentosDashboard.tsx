@@ -18,7 +18,7 @@ type ListResponse = AtendimentosListResult;
 
 function fmtDate(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleString("pt-PT", {
+  return d.toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -135,7 +135,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
             </div>
             <div className="kpi kpiRed">
               <div className="kpiValue">{data?.agregados.emergencias ?? "—"}</div>
-              <div className="kpiLabel">Emergências detetadas</div>
+              <div className="kpiLabel">Emergências detectadas</div>
             </div>
             <div className="kpi kpiYellow">
               <div className="kpiValue">{data?.agregados.bloqueados ?? "—"}</div>
@@ -219,14 +219,14 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                   {busy && !data ? (
                     <tr>
                       <td colSpan={6} className="muted">
-                        A carregar…
+                        Carregando…
                       </td>
                     </tr>
                   ) : null}
                   {data?.items.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="muted">
-                        Sem registos.
+                        Sem registros.
                       </td>
                     </tr>
                   ) : null}
@@ -270,7 +270,7 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
             {!selectedId ? (
               <p className="muted">Selecione uma linha para ver detalhes.</p>
             ) : detailBusy ? (
-              <p className="muted">A carregar detalhe…</p>
+              <p className="muted">Carregando detalhes…</p>
             ) : !detail ? (
               <p className="muted">Detalhe indisponível.</p>
             ) : (
@@ -291,8 +291,8 @@ export function AtendimentosDashboard({ initialData = null }: AtendimentosDashbo
                   </span>
                   <span className="pillNeutral">{(detail.duracaoMs / 1000).toFixed(1)}s</span>
                   {detail.sensitiveRedacted ? (
-                    <span className="gravUrg gravUrg--moderado" title="Conteúdo sensível omitido no registo">
-                      Redigido
+                    <span className="gravUrg gravUrg--moderado" title="Conteúdo sensível omitido no registro">
+                      Omitido
                     </span>
                   ) : null}
                   {detail.bloqueado ? <span className="gravUrg gravUrg--critico">Bloqueado</span> : null}

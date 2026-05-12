@@ -59,7 +59,7 @@ function buildStubPlan(flowId: ClinicalFlowId, userText: string): {
     case "violenciaDomestica":
       return {
         fullText:
-          `${baseCtx}Se houver risco imediato à segurança, **ligue aos serviços de emergência locais**. ` +
+          `${baseCtx}Se houver risco imediato à segurança, **acione os serviços de emergência locais**. ` +
           "Este assistente **não** substitui acionamento da equipe especializada nem plano de segurança individual. " +
           "Encaminhe a situação a profissionais qualificados (saúde, assistência social, rede de proteção) conforme protocolo.",
         explain: {

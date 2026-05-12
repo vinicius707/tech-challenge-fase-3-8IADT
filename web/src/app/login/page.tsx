@@ -7,7 +7,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 export const metadata: Metadata = {
   title: "Entrar",
   description:
-    "Autenticação na área de auditoria e assistente clínico (demo). Utilizador de teste após npm run db:seed.",
+    "Autenticação na área de auditoria e assistente clínico (demo). Usuário de teste após npm run db:seed.",
 };
 
 export default async function LoginPage() {

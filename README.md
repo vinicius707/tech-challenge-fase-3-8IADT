@@ -1,6 +1,6 @@
 # FemCare IA Core — Tech Challenge Fase 3 (8IADT)
 
-> Assistente clínico em **saúde da mulher** com pipeline completo de dados, fine-tuning, RAG, LangGraph, guardrails e UI funcional. Entrega académica do **Tech Challenge Fase 3** da pós-graduação 8IADT.
+> Assistente clínico em **saúde da mulher** com pipeline completo de dados, fine-tuning, RAG, LangGraph, guardrails e UI funcional. Entrega acadêmica do **Tech Challenge Fase 3** da pós-graduação 8IADT.
 
 [![Fases SDD](https://img.shields.io/badge/SDD-A%E2%86%92J%20%E2%9C%85-success?style=flat-square)](docs/sdd/ia-core/tasks.md)
 [![Release](https://img.shields.io/badge/LoRA%20release-ia--core--phase--h--v0.1-blue?style=flat-square)](https://github.com/vinicius707/tech-challenge-fase-3-8IADT/releases/tag/ia-core-phase-h-v0.1)
@@ -48,7 +48,7 @@ A entrega cobre os cinco itens obrigatórios do PDF Secretaria (p. 7):
 | **Privacidade e LGPD** | Logs JSON Lines minimizados; conteúdo livre de violência doméstica é redigido (`audit_summary.sensitive_redacted=true`). |
 | **Reprodutibilidade** | Hashes SHA-256 dos splits em [`outputs/model/metadata.json`](outputs/model/metadata.json); benchmark gera [`outputs/reports/avaliacao.md`](outputs/reports/avaliacao.md) versionado. |
 | **Custo zero na demo** | Modelo fine-tuned servido localmente no Ollama (`femcare:v0.1`, Q4_K_M, 807 MB). |
-| **Entrega académica auditável** | [`CHECKLIST_FASE3.md`](CHECKLIST_FASE3.md) referência cada requisito do PDF e SDD com ficheiro/comando associado. |
+| **Entrega acadêmica auditável** | [`CHECKLIST_FASE3.md`](CHECKLIST_FASE3.md) referencia cada requisito do PDF e SDD com arquivo/comando associado. |
 
 ### Números reais desta entrega
 
@@ -69,7 +69,7 @@ Todos os prints foram capturados com `femcare:v0.1` servindo o tráfego (`modelV
 
 ### 2.1 Login
 
-Após `npm run setup:local`, o BFF cria o utilizador demo (`demo@exemplo.org` / `demo12345`). A página `/login` faz POST para `/api/auth/login` e grava o cookie `mw_session` (JWT HS256, `HttpOnly`).
+Após `npm run setup:local`, o BFF cria o usuário demo (`demo@exemplo.org` / `demo12345`). A página `/login` faz POST para `/api/auth/login` e grava o cookie `mw_session` (JWT HS256, `HttpOnly`).
 
 ![Tela de login do BFF Next.js](docs/sdd/ia-core/assets/01-login.png)
 
@@ -185,7 +185,7 @@ Use este caminho para conhecer a UI **antes** de instalar Python/Ollama. O BFF d
 git clone https://github.com/vinicius707/tech-challenge-fase-3-8IADT.git
 cd tech-challenge-fase-3-8IADT/web
 npm install
-npm run setup:local       # cria SQLite + utilizador demo
+npm run setup:local       # cria SQLite + usuário demo
 npm run dev               # http://localhost:3000
 ```
 
@@ -630,7 +630,7 @@ Documentos principais (centralizados a partir deste README):
 - **Modelo base:** `meta-llama/Llama-3.2-1B-Instruct` (Meta). Consulte o model card no Hugging Face Hub para licenciamento.
 - **Ferramentas:** FastAPI, Uvicorn, LangChain, LangGraph, TRL/PEFT, Pydantic, Next.js, React, better-sqlite3, jose, Ollama, llama.cpp.
 
-Este repositório destina-se a **uso académico** dentro do escopo do Tech Challenge. Não constitui software médico certificado nem substitui avaliação por profissional habilitado.
+Este repositório destina-se a **uso acadêmico** dentro do escopo do Tech Challenge. Não constitui software médico certificado nem substitui avaliação por profissional habilitado.
 
 ---
 
