@@ -1,5 +1,7 @@
 # Web — Next.js (BFF + UI)
 
+> Este documento cobre **apenas** o pacote `web/`. A documentação principal do projeto (visão geral, arquitetura, demo com imagens, setup multi-terminal, fluxos LangGraph, RAG, fine-tuning, avaliação e troubleshooting) está centralizada no [README raiz](../README.md). Consulte-o antes deste para entender o contexto.
+
 Interface do assistente clínico descrita em [.specs/features/web-ui/spec.md](../.specs/features/web-ui/spec.md).
 
 ## Requisitos
