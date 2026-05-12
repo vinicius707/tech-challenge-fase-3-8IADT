@@ -1,0 +1,12 @@
+# Dependencias opcionais para Fase H (fine-tuning LoRA/QLoRA).
+# Instalar somente em ambiente com GPU (Colab/local) - design.md secao 3.
+# Use: pip install -r requirements-finetuning.txt
+-r requirements.txt
+
+torch>=2.2,<3
+transformers>=4.42,<5
+datasets>=2.20,<3
+peft>=0.11,<0.14
+trl>=0.9,<0.13
+accelerate>=0.31,<2
+bitsandbytes>=0.43,<0.46
