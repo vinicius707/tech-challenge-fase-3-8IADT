@@ -36,6 +36,7 @@ from fase3_orquestracao.clinical_router import (
     route_clinical_flow,
 )
 from fase3_orquestracao.llm_backend import (
+    LlmBackend,
     LlmBackendError,
     create_backend,
     resolve_backend_name,
@@ -52,6 +53,8 @@ from fase3_orquestracao.sse import (
     meta_event,
     token_event,
 )
+from fase4_seguranca.response_validator import ResponseValidator
+from fase4_seguranca.safety_guard import SafetyGuard
 
 
 logger = logging.getLogger(__name__)
@@ -68,6 +71,20 @@ _FALLBACK_MODEL_VERSION = "ia-core:safe-fallback"
 
 _TOKEN_DELAY_SECONDS = max(
     0.0, float(os.environ.get("IA_TOKEN_DELAY_MS", "0") or 0) / 1000.0
+)
+
+# Polish opcional via LLM real. Quando o backend ativo nao for `stub_safe`,
+# o IA Core reescreve a resposta deterministica do grafo em portugues clinico
+# usando o `LlmBackend.generate()` (IA-D2/IA-D3). Falha do LLM (timeout, erro,
+# guardrail bloqueando) faz fallback automatico para a resposta original.
+_LLM_POLISH_ENABLED = (
+    os.environ.get("IA_LLM_POLISH", "auto").strip().lower() not in {"0", "false", "off", "no"}
+)
+_LLM_POLISH_TIMEOUT_SECONDS = max(
+    1.0, float(os.environ.get("IA_LLM_POLISH_TIMEOUT_S", "45") or 45)
+)
+_LLM_POLISH_TEMPERATURE = max(
+    0.0, min(1.0, float(os.environ.get("IA_LLM_POLISH_TEMPERATURE", "0.2") or 0.2))
 )
 
 
@@ -97,6 +114,29 @@ def _check_optional_auth(authorization: str | None) -> None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_bearer")
 
 
+def resolve_active_backend() -> tuple[str | None, LlmBackend | None]:
+    """Resolve o backend ativo (nome + instancia) sem propagar erros.
+
+    Retorna `(nome, backend)` quando tudo deu certo, `(nome, None)` se o
+    backend nao pode ser instanciado (env ausente, dependencia faltando, etc.)
+    e `(None, None)` se nem o nome foi resolvido. Encapsula a logica para
+    reuso entre `resolve_model_version()` e o polish do stream.
+    """
+
+    try:
+        backend_name = resolve_backend_name()
+    except LlmBackendError:
+        return None, None
+
+    try:
+        backend = create_backend(backend_name)
+    except LlmBackendError as exc:
+        logger.warning("Falha ao instanciar backend %r: %s", backend_name, exc)
+        return backend_name, None
+
+    return backend_name, backend
+
+
 def resolve_model_version() -> str:
     """Resolve `modelVersion` ativo respeitando `IA_LLM_BACKEND` e o YAML.
 
@@ -105,15 +145,8 @@ def resolve_model_version() -> str:
     uma string clara que indica modo seguro do serviço Python.
     """
 
-    try:
-        backend_name = resolve_backend_name()
-    except LlmBackendError:
-        backend_name = None
-
-    try:
-        backend = create_backend(backend_name)
-    except LlmBackendError as exc:
-        logger.warning("Falha ao instanciar backend %r: %s", backend_name, exc)
+    _, backend = resolve_active_backend()
+    if backend is None:
         return _FALLBACK_MODEL_VERSION
 
     version = (backend.model_version or "").strip()
@@ -132,6 +165,119 @@ def _last_user_message(payload: ChatStreamRequest) -> str:
 
 
 _TOKEN_SPLIT_RE = re.compile(r"(\s+)")
+
+
+_POLISH_SYSTEM_INSTRUCTIONS_BY_FLOW: dict[str, str] = {
+    "triagemGinecologica": (
+        "Voce e um assistente clinico de triagem ginecologica. Use tom acolhedor, "
+        "evite jargao, mantenha o portugues do Brasil."
+    ),
+    "violenciaDomestica": (
+        "Voce e um assistente para casos sensiveis de violencia domestica. "
+        "Priorize seguranca da pessoa, escalonamento para equipe qualificada e "
+        "linguagem cuidadosa em portugues do Brasil."
+    ),
+    "obstetrico": (
+        "Voce e um assistente obstetrico. Reforce sinais de alarme quando "
+        "houver indicacao no rascunho e mantenha o portugues do Brasil."
+    ),
+    "prevencao": (
+        "Voce e um assistente de saude preventiva da mulher. Oriente sobre "
+        "exames e habitos com base no rascunho, em portugues do Brasil."
+    ),
+}
+
+_POLISH_BASE_RULES = (
+    "Regras obrigatorias:\n"
+    "- NAO prescreva medicamentos nem dosagens.\n"
+    "- NAO afirme diagnostico definitivo; sempre indique avaliacao profissional.\n"
+    "- NAO invente fontes alem do rascunho fornecido.\n"
+    "- Mantenha o conteudo factual do rascunho; voce so pode reordenar, "
+    "resumir e melhorar a clareza em portugues do Brasil.\n"
+    "- Limite-se ao escopo do fluxo informado.\n"
+    "- Responda em ate 6 paragrafos curtos."
+)
+
+
+def _build_polish_prompt(*, flow_id: str, user_message: str, draft: str) -> str:
+    """Monta o prompt enviado ao LlmBackend para reescrever a resposta.
+
+    Mantemos o rascunho deterministico como fonte autoritativa; o LLM atua
+    apenas como camada de estilo/linguagem.
+    """
+
+    system = _POLISH_SYSTEM_INSTRUCTIONS_BY_FLOW.get(
+        flow_id,
+        "Voce e um assistente clinico em saude da mulher. Use portugues do Brasil.",
+    )
+    return (
+        f"{system}\n\n"
+        f"{_POLISH_BASE_RULES}\n\n"
+        f"Pergunta da usuaria: \"{user_message.strip()}\"\n\n"
+        f"Rascunho deterministico produzido pelo IA Core (use como base factual):\n"
+        f"---\n{draft.strip()}\n---\n\n"
+        "Reescreva esse rascunho em portugues do Brasil aplicando as regras acima. "
+        "Nao adicione informacoes ausentes do rascunho. Devolva apenas a resposta "
+        "final, sem comentarios meta."
+    )
+
+
+async def _polish_response_with_llm(
+    *,
+    backend: LlmBackend,
+    flow_id: str,
+    user_message: str,
+    draft: str,
+    validator: ResponseValidator,
+    input_verdict: Any | None,
+) -> tuple[str | None, str | None]:
+    """Tenta reescrever `draft` usando o backend LLM real.
+
+    Retorna `(novo_texto, motivo_fallback)`:
+    - `(novo_texto, None)` quando o LLM produziu uma resposta valida e
+      compativel com os guardrails;
+    - `(None, motivo)` quando precisamos cair no rascunho original
+      (motivo = `timeout`, `llm_error`, `empty_output`, `blocked_by_guardrails`).
+    """
+
+    if not draft.strip():
+        return None, "empty_draft"
+    prompt = _build_polish_prompt(
+        flow_id=flow_id, user_message=user_message, draft=draft
+    )
+    try:
+        raw = await asyncio.wait_for(
+            backend.generate(prompt, temperature=_LLM_POLISH_TEMPERATURE),
+            timeout=_LLM_POLISH_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return None, "timeout"
+    except LlmBackendError as exc:
+        logger.warning("Polish LLM falhou: %s", exc)
+        return None, "llm_error"
+    except Exception as exc:  # noqa: BLE001 - nao podemos quebrar o stream
+        logger.exception("Polish LLM erro inesperado", exc_info=exc)
+        return None, "llm_error"
+
+    cleaned = (raw or "").strip()
+    if not cleaned:
+        return None, "empty_output"
+
+    try:
+        result = validator.validate(
+            cleaned, flow_id=flow_id, input_verdict=input_verdict
+        )
+    except Exception as exc:  # noqa: BLE001 - fallback seguro
+        logger.exception("Polish validator erro inesperado", exc_info=exc)
+        return None, "llm_error"
+
+    if result.blocked:
+        return None, "blocked_by_guardrails"
+
+    final_text = (result.text or "").strip()
+    if not final_text:
+        return None, "empty_output"
+    return final_text, None
 
 
 def _tokenize_response(text: str) -> list[str]:
@@ -162,19 +308,40 @@ def _level_for_status(status_name: str) -> str:
     return "info"
 
 
+def _should_polish(backend_name: str | None, backend: LlmBackend | None) -> bool:
+    """Decide se o polish via LLM deve rodar.
+
+    Default = ON sempre que o backend resolvido nao for o stub seguro.
+    A env `IA_LLM_POLISH=0/false/off/no` desativa explicitamente.
+    """
+
+    if not _LLM_POLISH_ENABLED:
+        return False
+    if backend is None:
+        return False
+    if (backend_name or "").strip().lower() in {"stub_safe", "stub"}:
+        return False
+    return True
+
+
 async def _stream_clinical_flow(
     *,
     request_id: str,
     payload: ChatStreamRequest,
     model_version: str,
+    backend_name: str | None,
+    backend: LlmBackend | None,
 ) -> AsyncIterator[bytes]:
     """Gera eventos SSE para a requisição em ordem segura para o BFF.
 
     Sequência:
 
     1. `meta` - sempre primeiro, com `requestId`/`flowId`/`modelVersion`.
-    2. `log`  - um por nó executado (já vem sanitizado pelo trace).
-    3. `token`- chunks da resposta final.
+    2. `log`  - um por nó executado (já vem sanitizado pelo trace) e,
+       opcionalmente, um log indicando se o polish via LLM real reescreveu a
+       resposta ou caiu em fallback.
+    3. `token`- chunks da resposta final (rascunho do grafo OU saida do LLM
+       depois de validada pelos guardrails da Fase E).
     4. `explain` - ExplainBlock construído por `fase4_seguranca`.
     5. `trace` - TraceSummary completo (IA-G3).
     6. `done` - sinaliza encerramento.
@@ -231,7 +398,35 @@ async def _stream_clinical_flow(
         if _TOKEN_DELAY_SECONDS:
             await asyncio.sleep(_TOKEN_DELAY_SECONDS)
 
-    for chunk in _tokenize_response(result.response):
+    final_text = result.response
+    if _should_polish(backend_name, backend):
+        validator = ResponseValidator(guard=SafetyGuard.from_yaml())
+        input_verdict = result.raw_state.get("input_verdict") if hasattr(
+            result, "raw_state"
+        ) else None
+        polished, fallback_reason = await _polish_response_with_llm(
+            backend=backend,  # type: ignore[arg-type]
+            flow_id=payload.flowId,
+            user_message=user_message,
+            draft=result.response,
+            validator=validator,
+            input_verdict=input_verdict,
+        )
+        if polished is not None:
+            final_text = polished
+            yield log_event(
+                f"llm_polish ok: resposta reescrita por {model_version}.",
+                level="info",
+                ts=_now_iso(),
+            ).encode("utf-8")
+        elif fallback_reason:
+            yield log_event(
+                f"llm_polish fallback: usando rascunho deterministico ({fallback_reason}).",
+                level="warning",
+                ts=_now_iso(),
+            ).encode("utf-8")
+
+    for chunk in _tokenize_response(final_text):
         yield token_event(chunk).encode("utf-8")
         if _TOKEN_DELAY_SECONDS:
             await asyncio.sleep(_TOKEN_DELAY_SECONDS)
@@ -301,7 +496,12 @@ async def chat_stream(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.errors()) from exc
 
     request_id = _new_request_id(x_request_id)
-    model_version = resolve_model_version()
+    backend_name, backend = resolve_active_backend()
+    if backend is not None:
+        raw_version = (backend.model_version or "").strip()
+        model_version = raw_version if raw_version and raw_version != _RESERVED_STUB_VERSION else _FALLBACK_MODEL_VERSION
+    else:
+        model_version = _FALLBACK_MODEL_VERSION
 
     headers = dict(SSE_HEADERS)
     headers["x-request-id"] = request_id
@@ -311,6 +511,8 @@ async def chat_stream(
             request_id=request_id,
             payload=payload,
             model_version=model_version,
+            backend_name=backend_name,
+            backend=backend,
         ),
         media_type=SSE_MEDIA_TYPE,
         headers=headers,
@@ -319,5 +521,6 @@ async def chat_stream(
 
 __all__ = [
     "router",
+    "resolve_active_backend",
     "resolve_model_version",
 ]

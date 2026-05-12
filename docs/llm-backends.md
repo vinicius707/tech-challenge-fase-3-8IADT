@@ -49,8 +49,10 @@ Mesma implementação OpenAI-compatible, apontando para o Ollama local na porta
 | Variável | Valor padrão |
 |----------|--------------|
 | `OLLAMA_API_KEY` | `ollama` (token simbólico aceito pelo Ollama). |
-| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` (também aceita `http://127.0.0.1:11434`; o sufixo `/v1` é anexado automaticamente). |
 | `OLLAMA_MODEL` | `llama3.2:3b` |
+
+> A normalização vale para qualquer URL Ollama: passe `http://host:11434` ou `http://host:11434/v1` indistintamente. URLs com path explícito diferente de `/v<n>` permanecem intactas.
 
 Pré-requisitos:
 
@@ -138,6 +140,27 @@ Quando o adaptador estiver disponível (Fase H), o procedimento previsto é:
 
 Até lá, qualquer integração que precise de fine-tuning deve cair de volta
 em `stub_safe` ou `openai_compatible`.
+
+## Integração com o endpoint `/v1/chat/stream` (polish via LLM real)
+
+A partir da Fase G, o endpoint SSE chama o backend ativo para **reescrever**
+em português clínico o rascunho determinístico produzido pelos grafos
+LangGraph (RAG + guardrails). A integração é controlada por env vars:
+
+| Variável | Default | Efeito |
+|----------|---------|--------|
+| `IA_LLM_POLISH` | `auto` (ligado para qualquer backend != `stub_safe`) | `0`/`false`/`off`/`no` desativa explicitamente o polish e força uso do rascunho determinístico. |
+| `IA_LLM_POLISH_TIMEOUT_S` | `45` | Timeout em segundos para `LlmBackend.generate()`. Atingido => fallback automático para o rascunho, sem quebrar o SSE. |
+| `IA_LLM_POLISH_TEMPERATURE` | `0.2` | Temperatura usada na chamada de polish (clamp entre 0 e 1). |
+
+Fluxo de segurança:
+
+1. O grafo executa normalmente (RAG + guardrails da Fase E) e produz o rascunho determinístico autoritativo.
+2. Se o backend ativo for real (Ollama, OpenAI-compatible, …), o IA Core monta um prompt com o rascunho como fonte factual + regras (PT-BR, sem prescrição, sem diagnóstico definitivo, sem inventar fontes) e chama `backend.generate(...)`.
+3. A saída do LLM passa novamente pelo `ResponseValidator` (Fase E). Se for bloqueada, vazia ou exceder o timeout, o IA Core mantém o rascunho determinístico e emite `log` com o motivo (`timeout`, `llm_error`, `empty_output`, `blocked_by_guardrails`).
+4. Quando o polish for bem-sucedido, o `log` inclui `llm_polish ok: resposta reescrita por <modelVersion>` antes do primeiro `token`.
+
+Esse desenho garante que o LLM realmente **gera** a resposta visível ao usuário sem permitir que ele violar guardrails clínicos ou substituir o pipeline determinístico.
 
 ## Boas práticas operacionais
 

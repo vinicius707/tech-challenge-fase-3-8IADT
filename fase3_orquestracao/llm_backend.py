@@ -165,15 +165,71 @@ class OpenAICompatibleBackend(LlmBackend):
         return (content or "").strip()
 
 
+def _ensure_openai_compat_suffix(url: str | None) -> str | None:
+    """Normaliza a base URL do Ollama para a API OpenAI-compatible.
+
+    O Ollama expoe `/v1/chat/completions` no mesmo host do `/api/tags`.
+    Como guides oficiais (incluindo `docs/sdd/ia-core/tasks.md`) pedem somente
+    `http://127.0.0.1:11434`, anexamos `/v1` automaticamente para evitar
+    falhas silenciosas em `chat.completions.create` quando o usuario esquece.
+    URLs ja contendo `/v1`, `/v2`, etc., ou qualquer outro path explicito,
+    permanecem intactas.
+    """
+
+    if not url:
+        return url
+    trimmed = url.rstrip("/")
+    if not trimmed:
+        return url
+
+    if trimmed.startswith("https://"):
+        host_and_path = trimmed[len("https://"):]
+    elif trimmed.startswith("http://"):
+        host_and_path = trimmed[len("http://"):]
+    else:
+        host_and_path = trimmed
+
+    if "/" not in host_and_path:
+        # nao tem path - anexar /v1
+        return f"{trimmed}/v1"
+
+    last_segment = host_and_path.rsplit("/", 1)[-1]
+    if last_segment.startswith("v") and last_segment[1:].isdigit():
+        # ja termina em /v<n> - manter
+        return trimmed
+    # path customizado distinto de /v<n>: nao mexer (caller sabe o que faz)
+    return trimmed
+
+
 class OllamaBackend(OpenAICompatibleBackend):
     """Alias semantico para servidores Ollama via API OpenAI-compatible.
 
     Mantem `provider_label='ollama'` para que logs e `model_version` deixem
-    claro qual provedor respondeu, sem mudar a interface.
+    claro qual provedor respondeu, sem mudar a interface. Aceita tambem
+    `OLLAMA_BASE_URL` sem o sufixo `/v1`, normalizando antes de instanciar
+    o cliente OpenAI.
     """
 
     def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("provider_label", "ollama")
+        base_url_env = kwargs.get("base_url_env", "OLLAMA_BASE_URL")
+        environ: Mapping[str, str] | None = kwargs.get("environ")
+        env_map: Mapping[str, str] = environ if environ is not None else os.environ
+        raw_env = env_map.get(base_url_env)
+        if raw_env:
+            normalized = _ensure_openai_compat_suffix(raw_env)
+            if normalized and normalized != raw_env:
+                if environ is None:
+                    # roda em producao - atualiza os.environ para refletir a
+                    # base URL real usada pelo cliente OpenAI a partir daqui.
+                    os.environ[base_url_env] = normalized
+                else:
+                    # testes ou chamadas controladas - geramos uma copia para
+                    # nao mutar o dict do caller.
+                    kwargs["environ"] = {**dict(environ), base_url_env: normalized}
+        default_base_url = kwargs.get("default_base_url")
+        if default_base_url:
+            kwargs["default_base_url"] = _ensure_openai_compat_suffix(default_base_url)
         super().__init__(**kwargs)
 
 

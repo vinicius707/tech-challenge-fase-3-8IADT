@@ -58,6 +58,9 @@ def _parse_sse(text: str) -> list[SseEvent]:
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.delenv("ORCHESTRATION_API_KEY", raising=False)
     monkeypatch.delenv("IA_TOKEN_DELAY_MS", raising=False)
+    # Forca backend determinatico nos testes do endpoint, evitando chamadas
+    # externas (Ollama/OpenAI) durante o stream.
+    monkeypatch.setenv("IA_LLM_BACKEND", "stub_safe")
     app = create_app()
     with TestClient(app) as tc:
         yield tc
@@ -303,6 +306,157 @@ def test_emits_meta_with_urgency_for_violent_flow(client: TestClient) -> None:
     meta_payload = events[0][1]
     assert meta_payload["flowId"] == "violenciaDomestica"
     assert meta_payload["urgencia"] in {"moderada", "alta", "emergencia"}
+
+
+def test_llm_polish_rewrites_response_when_backend_is_real(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Quando o backend nao e stub_safe, o stream chama LlmBackend.generate
+    e troca a resposta deterministica pelo texto produzido pelo LLM real,
+    desde que ele passe pelos guardrails da Fase E."""
+
+    from fase3_orquestracao import chat_stream as cs
+
+    class _FakeLlm:
+        model_version = "ollama:fake:v1"
+        provider = "ollama"
+
+        async def generate(self, prompt: str, **kwargs: Any) -> str:
+            return (
+                "Compreendo a sua preocupacao. Voce relatou dor pelvica leve "
+                "ha dois dias. Recomendo procurar uma consulta ginecologica "
+                "para avaliacao clinica e exames basicos."
+            )
+
+    monkeypatch.setenv("IA_LLM_BACKEND", "ollama")
+    monkeypatch.setattr(cs, "create_backend", lambda *a, **k: _FakeLlm())
+
+    app = create_app()
+    with TestClient(app) as tc:
+        response = tc.post("/v1/chat/stream", json=_valid_payload("triagemGinecologica"))
+        assert response.status_code == 200
+        events = _parse_sse(response.text)
+
+    log_messages = [
+        payload.get("message", "") for name, payload in events if name == "log"
+    ]
+    assert any("llm_polish ok" in msg for msg in log_messages), (
+        "esperado log llm_polish ok quando backend real produz resposta valida; "
+        f"logs vistos: {log_messages}"
+    )
+
+    token_text = "".join(
+        payload.get("delta", "") for name, payload in events if name == "token"
+    )
+    assert "Compreendo a sua preocupacao" in token_text
+
+
+def test_llm_polish_falls_back_when_generate_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Falha do LLM real deve cair em fallback para o rascunho do grafo
+    sem quebrar o SSE."""
+
+    from fase3_orquestracao import chat_stream as cs
+    from fase3_orquestracao.llm_backend import LlmBackendError
+
+    class _BrokenLlm:
+        model_version = "ollama:fake:v1"
+        provider = "ollama"
+
+        async def generate(self, prompt: str, **kwargs: Any) -> str:
+            raise LlmBackendError("Ollama nao respondeu")
+
+    monkeypatch.setenv("IA_LLM_BACKEND", "ollama")
+    monkeypatch.setattr(cs, "create_backend", lambda *a, **k: _BrokenLlm())
+
+    app = create_app()
+    with TestClient(app) as tc:
+        response = tc.post("/v1/chat/stream", json=_valid_payload("triagemGinecologica"))
+        assert response.status_code == 200
+        events = _parse_sse(response.text)
+
+    names = [n for n, _ in events]
+    assert names[0] == "meta"
+    assert names[-1] == "done"
+    log_messages = [
+        payload.get("message", "") for name, payload in events if name == "log"
+    ]
+    assert any("llm_polish fallback" in msg for msg in log_messages), (
+        f"esperado log llm_polish fallback; logs: {log_messages}"
+    )
+    assert any("llm_error" in msg for msg in log_messages)
+    # mesmo com LLM caido, tokens da resposta deterministica devem fluir
+    assert "token" in names
+
+
+def test_llm_polish_disabled_via_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`IA_LLM_POLISH=0` desativa o polish mesmo com backend real."""
+
+    from fase3_orquestracao import chat_stream as cs
+
+    class _FakeLlm:
+        model_version = "ollama:fake:v1"
+        provider = "ollama"
+        called = False
+
+        async def generate(self, prompt: str, **kwargs: Any) -> str:
+            type(self).called = True
+            return "nao deveria ser chamado"
+
+    monkeypatch.setenv("IA_LLM_BACKEND", "ollama")
+    monkeypatch.setenv("IA_LLM_POLISH", "0")
+    monkeypatch.setattr(cs, "_LLM_POLISH_ENABLED", False)
+    monkeypatch.setattr(cs, "create_backend", lambda *a, **k: _FakeLlm())
+
+    app = create_app()
+    with TestClient(app) as tc:
+        response = tc.post("/v1/chat/stream", json=_valid_payload("prevencao"))
+        assert response.status_code == 200
+
+    assert _FakeLlm.called is False
+
+
+def test_llm_polish_rejects_blocked_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Quando o LLM real produz um texto que cai nos guardrails (ex.: prescricao
+    de medicamento), descartamos a saida e mantemos o rascunho deterministico."""
+
+    from fase3_orquestracao import chat_stream as cs
+
+    class _PrescribingLlm:
+        model_version = "ollama:fake:v1"
+        provider = "ollama"
+
+        async def generate(self, prompt: str, **kwargs: Any) -> str:
+            # frase que aciona a regra `prescription_request` (Fase E):
+            # padrao "(?i)\\bprescre[vc]" + ``dosagem`` adicionais.
+            return (
+                "Para sua dor pelvica, te prescrevo dipirona 500mg. "
+                "A dosagem certa eh um comprimido a cada 6 horas."
+            )
+
+    monkeypatch.setenv("IA_LLM_BACKEND", "ollama")
+    monkeypatch.setattr(cs, "create_backend", lambda *a, **k: _PrescribingLlm())
+
+    app = create_app()
+    with TestClient(app) as tc:
+        response = tc.post("/v1/chat/stream", json=_valid_payload("triagemGinecologica"))
+        assert response.status_code == 200
+        events = _parse_sse(response.text)
+
+    token_text = "".join(
+        payload.get("delta", "") for name, payload in events if name == "token"
+    )
+    assert "dipirona" not in token_text.lower()
+    log_messages = [
+        payload.get("message", "") for name, payload in events if name == "log"
+    ]
+    assert any(
+        "blocked_by_guardrails" in msg or "llm_polish fallback" in msg
+        for msg in log_messages
+    )
 
 
 def test_trace_event_node_summary_is_safe(client: TestClient) -> None:

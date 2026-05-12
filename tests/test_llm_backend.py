@@ -161,6 +161,68 @@ def test_ollama_marca_provider_label():
     assert backend.model_version == "ollama:llama-test"
 
 
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("http://127.0.0.1:11434", "http://127.0.0.1:11434/v1"),
+        ("http://127.0.0.1:11434/", "http://127.0.0.1:11434/v1"),
+        ("http://127.0.0.1:11434/v1", "http://127.0.0.1:11434/v1"),
+        ("http://127.0.0.1:11434/v1/", "http://127.0.0.1:11434/v1"),
+        ("https://api.openai.com/v1", "https://api.openai.com/v1"),
+        ("https://api.openai.com/v2", "https://api.openai.com/v2"),
+        ("http://my.host:1234/custom/path", "http://my.host:1234/custom/path"),
+        ("", ""),
+    ],
+)
+def test_ensure_openai_compat_suffix_normaliza_base_url(raw: str, expected: str):
+    from fase3_orquestracao.llm_backend import _ensure_openai_compat_suffix
+
+    assert _ensure_openai_compat_suffix(raw) == expected
+
+
+def test_ensure_openai_compat_suffix_none():
+    from fase3_orquestracao.llm_backend import _ensure_openai_compat_suffix
+
+    assert _ensure_openai_compat_suffix(None) is None
+
+
+def test_ollama_aceita_base_url_sem_v1_via_env():
+    """OLLAMA_BASE_URL sem `/v1` deve ser normalizada antes de chegar ao cliente."""
+    fake = _FakeAsyncOpenAI()
+    environ_passed = {
+        "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+        "OLLAMA_API_KEY": "ollama",
+        "OLLAMA_MODEL": "llama3.2:1b",
+    }
+    backend = OllamaBackend(
+        api_key_env="OLLAMA_API_KEY",
+        base_url_env="OLLAMA_BASE_URL",
+        model_env="OLLAMA_MODEL",
+        default_api_key="ollama",
+        default_model="llama-test",
+        environ=environ_passed,
+        client=fake,
+    )
+    assert backend.model_version == "ollama:llama3.2:1b"
+    # dict do caller nao deve ser mutado pela normalizacao
+    assert environ_passed["OLLAMA_BASE_URL"] == "http://127.0.0.1:11434"
+
+
+def test_ollama_aceita_default_base_url_sem_v1():
+    """Mesmo o `default_base_url` informado sem `/v1` deve ser normalizado."""
+    backend = OllamaBackend(
+        api_key_env="OLLAMA_API_KEY",
+        base_url_env="OLLAMA_BASE_URL",
+        model_env="OLLAMA_MODEL",
+        default_api_key="ollama",
+        default_base_url="http://127.0.0.1:11434",
+        default_model="llama-test",
+        environ={},
+        client=_FakeAsyncOpenAI(),
+    )
+    assert backend.model_version == "ollama:llama-test"
+
+
 def test_local_lora_recusa_sem_artefato():
     backend = LocalLoraBackend()
     with pytest.raises(LlmBackendError, match="local_lora"):
