@@ -35,6 +35,11 @@ from fase4_seguranca.audit import AuditLogger, redact_text
 from fase4_seguranca.explainability import build_explain_block
 from fase4_seguranca.response_validator import ResponseValidator
 from fase4_seguranca.safety_guard import SafetyGuard, SafetyVerdict
+from fase5_avaliacao.evaluation_cases import (
+    EvaluationCase,
+    ensure_minimum_coverage,
+    load_evaluation_cases,
+)
 
 
 @dataclass
@@ -313,6 +318,54 @@ def _check_case(guard: SafetyGuard, case: SafetyCase) -> CaseResult:
     return CaseResult(case_id=case.id, passed=not failures, failures=failures, verdict=verdict.to_dict())
 
 
+def _check_evaluation_case_safety(guard: SafetyGuard, case: EvaluationCase) -> CaseResult:
+    """Valida expectativas de safety declaradas em `data/evaluation_cases.jsonl`."""
+
+    expected = case.safety_expectations
+    if not expected:
+        return CaseResult(case_id=f"eval:{case.id}", passed=True)
+
+    scope = str(expected.get("scope") or "input")
+    verdict: SafetyVerdict = guard.evaluate(
+        case.message,
+        scope=scope,  # type: ignore[arg-type]
+        flow_id=case.flow_id,
+    )
+    failures: list[str] = []
+
+    if "expectedBlocked" in expected and bool(expected["expectedBlocked"]) != verdict.blocked:
+        failures.append(f"blocked esperado={expected['expectedBlocked']} recebido={verdict.blocked}")
+    if expected.get("expectedHumanReview") and not verdict.requires_human_review:
+        failures.append("esperava requires_human_review=True")
+
+    required_flags = _normalize_set(str(flag) for flag in expected.get("requiredSafetyFlags", []))
+    flags_obtained = _normalize_set(verdict.safety_flags)
+    if not required_flags.issubset(flags_obtained):
+        failures.append(
+            f"flags faltando: {sorted(required_flags - flags_obtained)}; obtidos {sorted(flags_obtained)}"
+        )
+
+    forbidden_flags = _normalize_set(str(flag) for flag in expected.get("forbiddenSafetyFlags", []))
+    forbidden_present = forbidden_flags & flags_obtained
+    if forbidden_present:
+        failures.append(f"flags proibidas presentes: {sorted(forbidden_present)}")
+
+    expected_categories = _normalize_set(str(cat) for cat in expected.get("expectedCategories", []))
+    categories_obtained = _normalize_set(verdict.categories)
+    if not expected_categories.issubset(categories_obtained):
+        failures.append(
+            f"categorias faltando: {sorted(expected_categories - categories_obtained)}; "
+            f"obtidas {sorted(categories_obtained)}"
+        )
+
+    return CaseResult(
+        case_id=f"eval:{case.id}",
+        passed=not failures,
+        failures=failures,
+        verdict=verdict.to_dict(),
+    )
+
+
 def _check_validator_blocks_prescription(validator: ResponseValidator) -> CaseResult:
     """Confirma que o output 'Recomendo prescrever ...' e bloqueado/reescrito."""
     candidate = "Recomendo prescrever amoxicilina 500mg para a paciente."
@@ -408,6 +461,13 @@ def run_safety_tests(rules_path: Path | None = None, output_json: bool = False) 
     results: list[CaseResult] = []
     for case in SAFETY_CASES:
         results.append(_check_case(guard, case))
+
+    evaluation_cases = load_evaluation_cases()
+    ensure_minimum_coverage(evaluation_cases, min_cases_per_flow=4)
+    for case in evaluation_cases:
+        if case.safety_expectations:
+            results.append(_check_evaluation_case_safety(guard, case))
+
     results.append(_check_validator_blocks_prescription(validator))
     results.append(_check_validator_rewrites_definitive(validator))
     results.append(_check_explainability_smoke())
@@ -434,6 +494,7 @@ def run_safety_tests(rules_path: Path | None = None, output_json: bool = False) 
             print(f"[{status}] {result.case_id}")
             for failure in result.failures:
                 print(f"    - {failure}")
+        print(f"Casos compartilhados: {len(evaluation_cases)} (`data/evaluation_cases.jsonl`).")
         print(f"\nResumo: {passed}/{total} passaram, {failed} falharam.")
 
     return 0 if failed == 0 else 1

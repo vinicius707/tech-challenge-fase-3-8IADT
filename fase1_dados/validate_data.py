@@ -29,6 +29,11 @@ from fase1_dados.common import (
     ensure_dirs,
     iter_jsonl,
 )
+from fase5_avaliacao.evaluation_cases import (
+    EVALUATION_CASES_PATH,
+    ensure_minimum_coverage,
+    load_evaluation_cases,
+)
 
 REQUIRED_FLOW_DOMAINS = {
     "triagemGinecologica",
@@ -200,6 +205,49 @@ def validate_training_file(path: Path, result: ValidationResult, *, label_name: 
     return examples
 
 
+def validate_evaluation_cases(path: Path, result: ValidationResult) -> None:
+    """Valida `data/evaluation_cases.jsonl` (IA-I1).
+
+    A Fase I depende dos artefatos da Fase B, mas o gate indicado em
+    `tasks.md` para IA-I1 continua sendo `validate_data`. Por isso o validador
+    de dados também checa schema mínimo, unicidade e cobertura dos casos de
+    avaliação quando o arquivo já faz parte da entrega.
+    """
+
+    if not path.exists():
+        result.error(f"Arquivo de avaliacao nao encontrado: {path}")
+        return
+
+    try:
+        cases = load_evaluation_cases(path)
+        ensure_minimum_coverage(cases, min_cases_per_flow=4)
+    except (OSError, ValueError) as exc:
+        result.error(f"{path}: casos de avaliacao invalidos: {exc}")
+        return
+
+    tag_counter = Counter(tag for case in cases for tag in case.tags)
+    flow_counter = Counter(case.flow_id for case in cases)
+    required_tags = {"prescription", "urgency", "violence", "clinical_gap"}
+    missing_tags = sorted(required_tags - set(tag_counter))
+    if missing_tags:
+        result.error(f"{path}: tags obrigatorias ausentes: {', '.join(missing_tags)}")
+
+    for case in cases:
+        label = f"{path}:{case.id}"
+        if not case.safety_expectations:
+            result.warn(f"{label}: sem expectations.safety")
+        if not case.graph_expectations:
+            result.warn(f"{label}: sem expectations.graph")
+        if not case.rag_expectations:
+            result.warn(f"{label}: sem expectations.rag")
+        if not case.response_expectations:
+            result.warn(f"{label}: sem expectations.response")
+
+    result.metrics["evaluation_cases_count"] = len(cases)
+    result.metrics["evaluation_cases_by_flow"] = dict(sorted(flow_counter.items()))
+    result.metrics["evaluation_cases_tags"] = dict(sorted(tag_counter.items()))
+
+
 def write_validation_report(result: ValidationResult) -> None:
     status = "PASS" if result.ok else "FAIL"
     lines = [
@@ -232,6 +280,7 @@ def validate_all() -> ValidationResult:
     validate_rag_documents(RAG_DOCUMENTS_PATH, result)
     validate_training_file(TRAIN_PATH, result, label_name="train")
     validate_training_file(VAL_PATH, result, label_name="val")
+    validate_evaluation_cases(EVALUATION_CASES_PATH, result)
     write_validation_report(result)
     return result
 

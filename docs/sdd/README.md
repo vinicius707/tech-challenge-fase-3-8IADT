@@ -26,3 +26,24 @@ O corpus base do projeto sera o dataset Kaggle `pythonafroz/medquad-medical-ques
 ## Backend LLM definido
 
 O backend LLM padrao da implementacao sera Ollama local, configurado por variaveis como `OLLAMA_BASE_URL` e `OLLAMA_MODEL`. O backend OpenAI-compatible permanece como opcional, mas nao deve ser requisito para a demo principal.
+
+## Avaliacao automatizada
+
+A Fase I do pacote `ia-core` usa `data/evaluation_cases.jsonl` como base unica
+de casos sintéticos e reproduzíveis. Os gates principais são:
+
+```bash
+python fase1_dados/validate_data.py
+python fase5_avaliacao/safety_tests.py
+python fase5_avaliacao/graph_tests.py
+python fase5_avaliacao/benchmark.py
+python fase5_avaliacao/generate_report.py
+```
+
+O relatório final é gerado em `outputs/reports/avaliacao.md`. Para validar o
+contrato HTTP/SSE da Fase G, rode o IA Core e execute:
+
+```bash
+ORCHESTRATION_API_URL=http://127.0.0.1:8000 \
+python fase5_avaliacao/benchmark.py --via-http
+```
